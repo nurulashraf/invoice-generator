@@ -90,6 +90,7 @@ export default function App() {
         next = parsed + 1;
       }
     }
+    localStorage.setItem('invoiceCounter', String(next));
     return `INV-${String(next).padStart(3, '0')}`;
   };
 

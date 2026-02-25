@@ -14,15 +14,30 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (canvas && initialValue) {
-      const ctx = canvas.getContext('2d');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (initialValue) {
       const img = new Image();
       img.onload = () => {
-        ctx?.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0);
       };
       img.src = initialValue;
     }
-  }, []);
+  }, [initialValue]);
+
+  const getCanvasCoords = (canvas: HTMLCanvasElement, e: React.MouseEvent | React.TouchEvent) => {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    };
+  };
 
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
@@ -30,16 +45,14 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
     setIsDrawing(true);
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
-    const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX) - rect.left;
-    const y = ('touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY) - rect.top;
-    
+
+    const { x, y } = getCanvasCoords(canvas, e);
+
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.lineWidth = 2.5; // Slightly thicker
+    ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
-    ctx.strokeStyle = '#1D1D1F'; // Apple Gray
+    ctx.strokeStyle = '#1D1D1F';
   };
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
@@ -48,10 +61,8 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
-    const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX) - rect.left;
-    const y = ('touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY) - rect.top;
+
+    const { x, y } = getCanvasCoords(canvas, e);
 
     ctx.lineTo(x, y);
     ctx.stroke();
