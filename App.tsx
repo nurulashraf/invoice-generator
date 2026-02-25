@@ -399,7 +399,7 @@ export default function App() {
         {/* Preview Column - Sticky Right Side */}
         <div 
           ref={previewContainerRef}
-          className={`lg:col-span-7 xl:col-span-8 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] ${showMobilePreview ? 'fixed inset-0 z-50 bg-[#F5F5F7] dark:bg-black p-4 overflow-y-auto' : 'hidden'} lg:block lg:overflow-hidden flex flex-col`}
+          className={`lg:col-span-7 xl:col-span-8 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] ${showMobilePreview ? 'fixed inset-0 z-50 bg-[#F5F5F7] dark:bg-black p-4 overflow-y-auto' : 'hidden'} lg:block lg:overflow-y-auto flex flex-col no-scrollbar`}
         >
           
           {showMobilePreview && (
@@ -423,7 +423,7 @@ export default function App() {
              </div>
           )}
 
-          <div className="flex-1 flex items-start justify-center overflow-y-auto lg:overflow-visible no-scrollbar pb-20">
+          <div className="flex-1 flex items-start justify-center overflow-y-auto lg:overflow-y-auto no-scrollbar pb-20">
             {/* The Scalable Preview Wrapper */}
             <div 
               style={{ 
