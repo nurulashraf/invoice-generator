@@ -37,8 +37,8 @@
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/smartinvoice.git
-   cd smartinvoice
+   git clone https://github.com/nurulashraf/invoice-generator.git
+   cd invoice-generator
    ```
 
 2. **Install dependencies**
