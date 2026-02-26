@@ -1,5 +1,5 @@
 {
-  "name": "SmartInvoice AI",
-  "description": "A professional invoice generator featuring AI-powered auto-fill capabilities. Draft invoices from rough notes in seconds, customize layouts, and export to PDF.",
+  "name": "SmartInvoice",
+  "description": "A professional invoice generator. Customize layouts and export to PDF.",
   "requestFramePermissions": []
 }

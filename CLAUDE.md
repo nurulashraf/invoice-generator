@@ -10,18 +10,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 No test runner or linter is configured.
 
-## Environment Setup
-
-Set `GEMINI_API_KEY` in a `.env` file at the project root. Vite exposes it as `process.env.API_KEY` and `process.env.GEMINI_API_KEY` (see `vite.config.ts`).
-
 ## Architecture
 
 Single-page client-side React 19 app with no backend and no routing. All state lives in React `useState` hooks in `App.tsx`.
 
 ### Key directories and files
 
-- `components/` — React components (InvoiceEditor, InvoicePreview, AIChatPanel, SignaturePad, Toast)
-- `services/geminiService.ts` — Google Gemini AI integration; sends current invoice context + user prompt, returns validated partial `InvoiceData` updates via Zod
+- `components/` — React components (InvoiceEditor, InvoicePreview, SignaturePad, Toast)
 - `services/storageService.ts` — localStorage persistence (draft, history, invoice counter)
 - `types.ts` — Core data types (`InvoiceData`, `LineItem`)
 - `i18n.tsx` — React context-based i18n with English and Malay translations
@@ -31,8 +26,7 @@ Single-page client-side React 19 app with no backend and no routing. All state l
 
 1. User edits fields in `InvoiceEditor` → `setInvoice` updates state in `App.tsx`
 2. `InvoicePreview` renders the live invoice (also used as the PDF source element)
-3. AI chat in `AIChatPanel` sends prompts to `geminiService`, which returns partial invoice updates merged into state
-4. `storageService` handles localStorage read/write for drafts and history
+3. `storageService` handles localStorage read/write for drafts and history
 
 ### Styling
 

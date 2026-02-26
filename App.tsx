@@ -2,17 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { InvoiceData, createDefaultInvoice } from './types';
 import { InvoiceEditor } from './components/InvoiceEditor';
 import { InvoicePreview } from './components/InvoicePreview';
-import { modifyInvoiceWithAI } from './services/geminiService';
 import { saveInvoiceToHistory, getStoredInvoices, deleteInvoiceFromHistory } from './services/storageService';
-import { Printer, Sparkles, X, Plus, Globe, Moon, Sun, History, Trash2, LayoutTemplate, Command, Download } from 'lucide-react';
+import { Printer, X, Plus, Globe, Moon, Sun, History, Trash2, LayoutTemplate, Command, Download } from 'lucide-react';
 import { useI18n } from './i18n';
 import { ToastContainer, ToastMessage } from './components/Toast';
-import { AIChatPanel } from './components/AIChatPanel';
 
 export default function App() {
   const { t, locale, setLocale } = useI18n();
   const [showHistory, setShowHistory] = useState(false);
-  const [showAiChat, setShowAiChat] = useState(false);
   const [savedInvoices, setSavedInvoices] = useState<InvoiceData[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [isExporting, setIsExporting] = useState(false);
@@ -114,7 +111,6 @@ export default function App() {
     };
   });
   
-  const [isAiLoading, setIsAiLoading] = useState(false);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
 
   // Auto-save effect
@@ -225,26 +221,6 @@ export default function App() {
     }
   };
 
-  const handleAiRequest = async (text: string) => {
-    try {
-      setIsAiLoading(true);
-      const changes = await modifyInvoiceWithAI(invoice, text);
-      setInvoice(prev => {
-        return { ...prev, ...changes };
-      });
-      // The Chat Panel handles the success message now
-    } catch (error: any) {
-      if (error.message?.includes('API Key')) {
-        addToast(t('apiKeyError'), 'error');
-      } else {
-        addToast(t('aiError'), 'error');
-      }
-      throw error;
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
-
   const toggleLanguage = () => setLocale(locale === 'en' ? 'ms' : 'en');
 
   // Styles
@@ -254,13 +230,6 @@ export default function App() {
     <div className="min-h-screen bg-[#F5F5F7] dark:bg-[#000000] flex flex-col font-sans">
       
       <ToastContainer toasts={toasts} removeToast={removeToast} />
-
-      <AIChatPanel 
-        isOpen={showAiChat} 
-        onClose={() => setShowAiChat(false)} 
-        onSend={handleAiRequest}
-        isThinking={isAiLoading}
-      />
 
       {/* Glass Navbar */}
       <div className="no-print sticky top-0 z-40 w-full glass-panel border-b border-gray-200/50 dark:border-white/5">
@@ -275,20 +244,6 @@ export default function App() {
             </div>
             
             <div className="flex items-center gap-1 md:gap-2">
-               <button
-                 onClick={() => setShowAiChat(!showAiChat)}
-                 className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full transition-all text-xs font-medium ${
-                   showAiChat 
-                   ? 'bg-brand-500 text-white shadow-md' 
-                   : 'text-brand-500 bg-brand-500/10 hover:bg-brand-500/20'
-                 }`}
-               >
-                 <Sparkles className="w-3.5 h-3.5" fill={showAiChat ? "currentColor" : "none"} />
-                 <span>AI Copilot</span>
-               </button>
-
-               <div className="h-4 w-px bg-gray-300 dark:bg-white/10 mx-2 hidden md:block"></div>
-
                <button onClick={() => setShowHistory(true)} className={navBtnClass} title={t('history')}>
                  <History className="w-5 h-5" strokeWidth={1.5} />
                </button>
@@ -387,11 +342,9 @@ export default function App() {
         {/* Editor Column - Left Side */}
         <div className={`lg:col-span-5 xl:col-span-4 ${showMobilePreview ? 'hidden' : 'block'} lg:block`}>
           <div className="no-print">
-            <InvoiceEditor 
-              data={invoice} 
-              onChange={setInvoice} 
-              onAiRequest={handleAiRequest}
-              isAiLoading={isAiLoading}
+            <InvoiceEditor
+              data={invoice}
+              onChange={setInvoice}
             />
           </div>
         </div>
@@ -441,12 +394,6 @@ export default function App() {
       {/* Mobile Actions */}
       {!showMobilePreview && (
         <div className="lg:hidden fixed bottom-6 right-6 z-30 no-print flex flex-col gap-4">
-           <button
-            onClick={() => setShowAiChat(!showAiChat)}
-            className="flex items-center justify-center w-14 h-14 bg-brand-500 text-white rounded-full shadow-float active:scale-90 transition-transform"
-          >
-            <Sparkles className="w-6 h-6" fill="white" />
-          </button>
            <button
             onClick={handleNewInvoice}
             className="flex items-center justify-center w-14 h-14 bg-white dark:bg-[#1C1C1E] text-gray-600 dark:text-gray-300 rounded-full shadow-float border border-white/10 active:scale-90 transition-transform"

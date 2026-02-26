@@ -7,8 +7,6 @@ import { SignaturePad } from './SignaturePad';
 interface InvoiceEditorProps {
   data: InvoiceData;
   onChange: (data: InvoiceData) => void;
-  onAiRequest: (text: string) => Promise<void>; 
-  isAiLoading: boolean;
 }
 
 export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) => {

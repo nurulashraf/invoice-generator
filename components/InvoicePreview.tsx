@@ -242,7 +242,7 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ data }) => {
               {/* Page Footer Note */}
               <div className="mt-auto border-t border-gray-100 pt-4 text-center break-inside-avoid">
                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t('computerGenerated')}</p>
-                 <p className="text-[9px] text-gray-300">Created with SmartInvoice AI</p>
+                 <p className="text-[9px] text-gray-300">Created with SmartInvoice</p>
               </div>
 
             </div>
