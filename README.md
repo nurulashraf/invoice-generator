@@ -4,7 +4,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue?style=flat-square&logo=typescript)
 ![Tailwind](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=flat-square&logo=tailwindcss)
 
-**SmartInvoice** is a client-side invoice generator with a premium "Apple-style" interface and pixel-perfect PDF generation — no backend server required.
+**SmartInvoice** is a client-side invoice generator with a premium "Apple-style" interface and pixel-perfect PDF generation, no backend server required.
 
 ---
 
