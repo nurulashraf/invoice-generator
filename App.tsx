@@ -137,17 +137,26 @@ export default function App() {
       const element = document.getElementById('invoice-preview');
       if (!element) throw new Error('Preview not found');
 
+      // Temporarily reset parent scale transform for accurate capture
+      const scaledParent = element.parentElement as HTMLElement | null;
+      const originalTransform = scaledParent?.style.transform || '';
+      if (scaledParent) scaledParent.style.transform = 'none';
+
       const opt = {
         margin: 0,
         filename: `${invoice.invoiceNumber || 'invoice'}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, scrollY: 0, width: 794, windowWidth: 794 },
+        html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
 
       // @ts-ignore
       await window.html2pdf().set(opt).from(element).save();
+
+      // Restore scale transform
+      if (scaledParent) scaledParent.style.transform = originalTransform;
+
       addToast('PDF Downloaded successfully', 'success');
 
     } catch (error) {
