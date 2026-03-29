@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 
@@ -26,12 +26,15 @@ export const ToastContainer: React.FC<ToastProps> = ({ toasts, removeToast }) =>
 };
 
 const ToastItem: React.FC<{ toast: ToastMessage; onRemove: () => void }> = ({ toast, onRemove }) => {
+  const onRemoveRef = useRef(onRemove);
+  onRemoveRef.current = onRemove;
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      onRemove();
+      onRemoveRef.current();
     }, 4000);
     return () => clearTimeout(timer);
-  }, [onRemove]);
+  }, []);
 
   return (
     <motion.div

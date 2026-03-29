@@ -81,7 +81,7 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = React.memo(({ data 
         itemOffset += pageItems.length;
 
         return (
-          <div key={pageIndex} className="print-page bg-white shadow-2xl shrink-0 w-[full] max-w-[21cm] mx-auto overflow-hidden relative print:shadow-none" style={{ minHeight: '29.7cm', width: '21cm', pageBreakAfter: isLastPage ? 'auto' : 'always' }}>
+          <div key={pageIndex} className="print-page bg-white shadow-2xl shrink-0 w-full max-w-[21cm] mx-auto overflow-hidden relative print:shadow-none" style={{ minHeight: '29.7cm', width: '21cm', pageBreakAfter: isLastPage ? 'auto' : 'always' }}>
             <div className="p-10 md:p-14 h-full flex flex-col flex-1">
               
               {isFirstPage ? (
