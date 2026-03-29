@@ -6,6 +6,7 @@ import { saveInvoiceToHistory, getStoredInvoices, deleteInvoiceFromHistory } fro
 import { Printer, X, Plus, Globe, Moon, Sun, History, Trash2, LayoutTemplate, Command, Download } from 'lucide-react';
 import { useI18n } from './i18n';
 import { ToastContainer, ToastMessage } from './components/Toast';
+import html2pdf from 'html2pdf.js';
 
 export default function App() {
   const { t, locale, setLocale } = useI18n();
@@ -128,8 +129,7 @@ export default function App() {
     addToast('Generating PDF...', 'info');
 
     try {
-      // @ts-ignore - html2pdf is loaded via CDN in index.html
-      if (typeof window.html2pdf === 'undefined') {
+      if (!html2pdf) {
         window.print();
         return;
       }
@@ -151,8 +151,7 @@ export default function App() {
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
 
-      // @ts-ignore
-      await window.html2pdf().set(opt).from(element).save();
+      await html2pdf().set(opt).from(element).save();
 
       // Restore scale transform
       if (scaledParent) scaledParent.style.transform = originalTransform;
