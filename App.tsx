@@ -126,7 +126,7 @@ export default function App() {
 
   const handleExportPDF = async () => {
     setIsExporting(true);
-    addToast('Generating PDF...', 'info');
+    addToast(t('generatingPdf'), 'info');
 
     try {
       const element = document.getElementById('invoice-preview');
@@ -151,11 +151,11 @@ export default function App() {
       // Restore scale transform
       if (scaledParent) scaledParent.style.transform = originalTransform;
 
-      addToast('PDF Downloaded successfully', 'success');
+      addToast(t('pdfSuccess'), 'success');
 
     } catch (error) {
       console.error('PDF Export Error:', error);
-      addToast('Failed to generate PDF. Falling back to print.', 'error');
+      addToast(t('pdfError'), 'error');
       setTimeout(() => window.print(), 1000);
     } finally {
       setIsExporting(false);
@@ -212,15 +212,15 @@ export default function App() {
   const loadInvoice = (inv: InvoiceData) => {
     setInvoice(inv);
     setShowHistory(false);
-    addToast('Invoice loaded successfully', 'success');
+    addToast(t('invoiceLoaded'), 'success');
   };
 
   const deleteInvoice = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (window.confirm('Delete this invoice permanently?')) {
+    if (window.confirm(t('confirmDelete'))) {
       const updated = deleteInvoiceFromHistory(id);
       setSavedInvoices(updated);
-      addToast('Invoice deleted', 'info');
+      addToast(t('invoiceDeleted'), 'info');
     }
   };
 
@@ -251,11 +251,11 @@ export default function App() {
                  <History className="w-5 h-5" strokeWidth={1.5} />
                </button>
 
-               <button onClick={toggleTheme} className={navBtnClass} aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}>
+               <button onClick={toggleTheme} className={navBtnClass} aria-label={theme === 'light' ? t('switchToDark') : t('switchToLight')}>
                  {theme === 'light' ? <Moon className="w-5 h-5" strokeWidth={1.5} /> : <Sun className="w-5 h-5" strokeWidth={1.5} />}
                </button>
 
-               <button onClick={toggleLanguage} className={`${navBtnClass} flex items-center gap-1`} aria-label="Switch language">
+               <button onClick={toggleLanguage} className={`${navBtnClass} flex items-center gap-1`} aria-label={t('switchLanguage')}>
                  <Globe className="w-5 h-5" strokeWidth={1.5} />
                  <span className="text-[10px] font-bold uppercase pt-0.5">{locale}</span>
                </button>
@@ -271,7 +271,7 @@ export default function App() {
                 className={`hidden md:flex items-center gap-2 px-4 py-1.5 bg-brand-500 text-white rounded-full hover:bg-brand-600 active:scale-95 transition-all shadow-md text-xs font-semibold ml-2 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 ${isExporting ? 'opacity-70 cursor-wait' : ''}`}
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>{isExporting ? 'Exporting...' : 'Export PDF'}</span>
+                <span>{isExporting ? t('exporting') : t('exportPdf')}</span>
               </button>
 
                {/* Mobile Toggle */}
@@ -295,7 +295,7 @@ export default function App() {
               <h2 id="history-title" className="text-lg font-semibold text-[#1D1D1F] dark:text-white">
                 {t('history')}
               </h2>
-              <button onClick={() => setShowHistory(false)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2" aria-label="Close history">
+              <button onClick={() => setShowHistory(false)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2" aria-label={t('closeHistory')}>
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -324,7 +324,7 @@ export default function App() {
                     <span className="text-[10px] text-gray-400">{inv.date}</span>
                   </div>
                   <div className="text-xs text-gray-500 truncate mb-2">
-                    {inv.clientName || 'No Client'}
+                    {inv.clientName || t('noClient')}
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-bold text-[#1D1D1F] dark:text-white">
@@ -375,12 +375,12 @@ export default function App() {
                     aria-busy={isExporting}
                     className={`px-4 py-2 bg-brand-500 text-white rounded-full font-medium text-sm shadow-md focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 ${isExporting ? 'opacity-70' : ''}`}
                   >
-                    {isExporting ? 'Exporting...' : 'Export PDF'}
+                    {isExporting ? t('exporting') : t('exportPdf')}
                   </button>
                   <button
                     onClick={() => setShowMobilePreview(false)}
                     className="p-2 bg-white dark:bg-white/10 rounded-full text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
-                    aria-label="Close preview"
+                    aria-label={t('closePreview')}
                   >
                     <X className="w-5 h-5" />
                   </button>

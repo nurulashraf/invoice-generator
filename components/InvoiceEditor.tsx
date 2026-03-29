@@ -42,7 +42,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      alert(t('logoTooLarge') || 'Logo must be under 2 MB');
+      alert(t('logoTooLarge'));
       return;
     }
     const reader = new FileReader();

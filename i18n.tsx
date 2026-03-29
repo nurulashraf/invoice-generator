@@ -52,7 +52,26 @@ const translations = {
     logoDesc: 'Upload a square or rectangular image (PNG/JPG).',
     signature: 'Digital Signature',
     clear: 'Clear',
-    authorizedSignature: 'Authorized Signature'
+    authorizedSignature: 'Authorized Signature',
+    // Toast messages
+    generatingPdf: 'Generating PDF...',
+    pdfSuccess: 'PDF downloaded successfully',
+    pdfError: 'Failed to generate PDF. Falling back to print.',
+    invoiceLoaded: 'Invoice loaded successfully',
+    invoiceDeleted: 'Invoice deleted',
+    confirmDelete: 'Delete this invoice permanently?',
+    noClient: 'No Client',
+    // Button labels
+    exportPdf: 'Export PDF',
+    exporting: 'Exporting...',
+    // Accessibility labels
+    switchToDark: 'Switch to dark mode',
+    switchToLight: 'Switch to light mode',
+    switchLanguage: 'Switch language',
+    closeHistory: 'Close history',
+    closePreview: 'Close preview',
+    dismissNotification: 'Dismiss notification',
+    logoTooLarge: 'Logo must be under 2 MB'
   },
   ms: {
     appTitle: 'SmartInvoice',
@@ -103,7 +122,26 @@ const translations = {
     logoDesc: 'Muat naik imej (PNG/JPG).',
     signature: 'Tandatangan Digital',
     clear: 'Padam',
-    authorizedSignature: 'Tandatangan Sah'
+    authorizedSignature: 'Tandatangan Sah',
+    // Toast messages
+    generatingPdf: 'Menjana PDF...',
+    pdfSuccess: 'PDF berjaya dimuat turun',
+    pdfError: 'Gagal menjana PDF. Menggunakan cetakan.',
+    invoiceLoaded: 'Invois berjaya dimuatkan',
+    invoiceDeleted: 'Invois dipadam',
+    confirmDelete: 'Padam invois ini secara kekal?',
+    noClient: 'Tiada Pelanggan',
+    // Button labels
+    exportPdf: 'Eksport PDF',
+    exporting: 'Mengeksport...',
+    // Accessibility labels
+    switchToDark: 'Tukar ke mod gelap',
+    switchToLight: 'Tukar ke mod cerah',
+    switchLanguage: 'Tukar bahasa',
+    closeHistory: 'Tutup sejarah',
+    closePreview: 'Tutup pratonton',
+    dismissNotification: 'Tutup pemberitahuan',
+    logoTooLarge: 'Logo mestilah kurang daripada 2 MB'
   }
 };
 
