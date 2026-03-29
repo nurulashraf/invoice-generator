@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { InvoiceData } from '../types';
 import { useI18n } from '../i18n';
 import { Command } from 'lucide-react';
@@ -7,29 +7,33 @@ interface InvoicePreviewProps {
   data: InvoiceData;
 }
 
-export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ data }) => {
+export const InvoicePreview: React.FC<InvoicePreviewProps> = React.memo(({ data }) => {
   const { t, locale } = useI18n();
-  const subtotal = data.items.reduce((acc, item) => acc + (item.quantity * item.rate), 0);
-  const taxAmount = subtotal * (data.taxRate / 100);
-  const total = subtotal + taxAmount;
+
+  const { subtotal, taxAmount, total } = useMemo(() => {
+    const subtotal = data.items.reduce((acc, item) => acc + (item.quantity * item.rate), 0);
+    const taxAmount = subtotal * (data.taxRate / 100);
+    const total = subtotal + taxAmount;
+    return { subtotal, taxAmount, total };
+  }, [data.items, data.taxRate]);
 
   const formatLocale = locale === 'ms' ? 'ms-MY' : 'en-MY';
 
-  const formatMoney = (amount: number) => {
+  const formatMoney = useCallback((amount: number) => {
     return amount.toLocaleString(formatLocale, {
       style: 'currency',
       currency: data.currency
     });
-  };
+  }, [formatLocale, data.currency]);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString(formatLocale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     });
-  };
+  }, [formatLocale]);
 
   const invoiceTitle = (data.senderSstNo && data.senderSstNo.trim().length > 0) 
     ? t('taxInvoice') 
@@ -251,4 +255,4 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ data }) => {
       })}
     </div>
   );
-};
+});
