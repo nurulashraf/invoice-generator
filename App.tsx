@@ -18,6 +18,7 @@ export default function App() {
   // Preview Scaling Logic
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const [previewScale, setPreviewScale] = useState(1);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
 
   // Toast Helpers
   const addToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -52,10 +53,11 @@ export default function App() {
   // Scroll effect & Resize Scale
   useEffect(() => {
     const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
       if (previewContainerRef.current) {
         const containerWidth = previewContainerRef.current.offsetWidth;
         const targetWidth = 794; // A4 width in pixels
-        const scale = Math.min(1, (containerWidth - 40) / targetWidth); 
+        const scale = Math.min(1, (containerWidth - 40) / targetWidth);
         setPreviewScale(scale);
       }
     };
@@ -392,7 +394,7 @@ export default function App() {
             {/* The Scalable Preview Wrapper */}
             <div 
               style={{ 
-                transform: window.innerWidth >= 1024 ? `scale(${previewScale})` : 'none',
+                transform: isDesktop ? `scale(${previewScale})` : 'none',
                 transformOrigin: 'top center',
               }}
               className="transition-transform duration-300 ease-out origin-top w-full flex justify-center shadow-float rounded-none md:rounded-sm bg-white"

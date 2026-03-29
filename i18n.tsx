@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
 type Locale = 'en' | 'ms';
 
@@ -52,6 +52,7 @@ const translations = {
     logoDesc: 'Upload a square or rectangular image (PNG/JPG).',
     signature: 'Digital Signature',
     clear: 'Clear',
+    undo: 'Undo',
     authorizedSignature: 'Authorized Signature',
     // Toast messages
     generatingPdf: 'Generating PDF...',
@@ -122,6 +123,7 @@ const translations = {
     logoDesc: 'Muat naik imej (PNG/JPG).',
     signature: 'Tandatangan Digital',
     clear: 'Padam',
+    undo: 'Buat Semula',
     authorizedSignature: 'Tandatangan Sah',
     // Toast messages
     generatingPdf: 'Menjana PDF...',
@@ -156,9 +158,9 @@ const I18nContext = createContext<I18nContextType | undefined>(undefined);
 export const I18nProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [locale, setLocale] = useState<Locale>('en');
 
-  const t = (key: keyof typeof translations['en']) => {
+  const t = useCallback((key: keyof typeof translations['en']) => {
     return translations[locale][key] || key;
-  };
+  }, [locale]);
 
   return (
     <I18nContext.Provider value={{ locale, setLocale, t }}>
