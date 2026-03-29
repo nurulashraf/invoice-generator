@@ -12,13 +12,13 @@ interface InvoiceEditorProps {
 export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) => {
   const { t } = useI18n();
   // Flattened view for minimalism - sections are just headers in the scroll flow
-  
+
   const updateField = (field: keyof InvoiceData, value: any) => {
     onChange({ ...data, [field]: value });
   };
 
   const updateItem = (id: string, field: keyof LineItem, value: any) => {
-    const newItems = data.items.map(item => 
+    const newItems = data.items.map(item =>
       item.id === id ? { ...item, [field]: value } : item
     );
     onChange({ ...data, items: newItems });
@@ -56,45 +56,49 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
   const groupClass = "bg-white dark:bg-[#1C1C1E] rounded-xl overflow-hidden shadow-sm mb-6";
   const rowClass = "relative flex items-center justify-between p-3.5 border-b border-gray-100 dark:border-white/5 last:border-0";
   const labelClass = "text-[15px] text-[#1D1D1F] dark:text-white font-medium min-w-[100px]";
-  const inputClass = "flex-1 text-right bg-transparent text-[15px] text-gray-600 dark:text-gray-300 placeholder:text-gray-300 outline-none transition-colors focus:text-brand-500";
+  const inputClass = "flex-1 text-right bg-transparent text-[15px] text-gray-600 dark:text-gray-300 placeholder:text-gray-300 outline-none transition-colors focus:text-brand-500 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded";
   const sectionTitleClass = "text-xs font-medium text-gray-500 uppercase tracking-wider ml-3 mb-2";
 
   return (
     <div className="pb-32 md:pb-0 font-sans">
-      
+
       {/* SECTION: IDENTITY */}
       <h3 className={sectionTitleClass}>{t('invoiceDetails')}</h3>
       <div className={groupClass}>
         <div className={rowClass}>
-          <span className={labelClass}>{t('number')}</span>
-          <input 
-            type="text" 
+          <label htmlFor="invoice-number" className={labelClass}>{t('number')}</label>
+          <input
+            id="invoice-number"
+            type="text"
             value={data.invoiceNumber}
             onChange={(e) => updateField('invoiceNumber', e.target.value)}
             className={`${inputClass} font-semibold`}
           />
         </div>
         <div className={rowClass}>
-          <span className={labelClass}>{t('date')}</span>
-          <input 
-            type="date" 
+          <label htmlFor="invoice-date" className={labelClass}>{t('date')}</label>
+          <input
+            id="invoice-date"
+            type="date"
             value={data.date}
             onChange={(e) => updateField('date', e.target.value)}
             className={`${inputClass} appearance-none`}
           />
         </div>
         <div className={rowClass}>
-          <span className={labelClass}>{t('dueDate')}</span>
-          <input 
-            type="date" 
+          <label htmlFor="due-date" className={labelClass}>{t('dueDate')}</label>
+          <input
+            id="due-date"
+            type="date"
             value={data.dueDate}
             onChange={(e) => updateField('dueDate', e.target.value)}
             className={`${inputClass} appearance-none text-red-500`}
           />
         </div>
         <div className={rowClass}>
-          <span className={labelClass}>{t('currency')}</span>
+          <label htmlFor="currency" className={labelClass}>{t('currency')}</label>
            <select
+            id="currency"
             value={data.currency}
             onChange={(e) => updateField('currency', e.target.value)}
             className={`${inputClass} bg-transparent appearance-none cursor-pointer pr-4`}
@@ -124,7 +128,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
                   </div>
                 )}
                 <span className="text-[15px] text-brand-500">Edit</span>
-                <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" aria-label="Upload logo" />
              </label>
           </div>
           <div className="p-4 bg-white dark:bg-[#1C1C1E]">
@@ -143,40 +147,45 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
            <span className="text-xs font-semibold text-gray-400 uppercase">{t('fromSender')}</span>
         </div>
         <div className={rowClass}>
-          <input 
+          <input
+            aria-label={t('businessName')}
             placeholder={t('businessName')}
-            className="w-full text-[15px] font-medium bg-transparent outline-none placeholder:text-gray-300"
+            className="w-full text-[15px] font-medium bg-transparent outline-none placeholder:text-gray-300 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
             value={data.senderName}
             onChange={(e) => updateField('senderName', e.target.value)}
           />
         </div>
         <div className={rowClass}>
-          <input 
+          <input
+            aria-label={t('email')}
             placeholder={t('email')}
-            className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-300"
+            className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-300 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
             value={data.senderEmail}
             onChange={(e) => updateField('senderEmail', e.target.value)}
           />
         </div>
          <div className={rowClass}>
-            <textarea 
+            <textarea
+              aria-label={t('address')}
               placeholder={t('address')}
               rows={2}
-              className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-300 resize-none py-1"
+              className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-300 resize-none py-1 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
               value={data.senderAddress}
               onChange={(e) => updateField('senderAddress', e.target.value)}
             />
         </div>
         <div className="flex divide-x divide-gray-100 dark:divide-white/5">
-            <input 
+            <input
+              aria-label={t('regNo')}
               placeholder={t('regNo')}
-              className="w-1/2 p-3.5 text-[13px] bg-transparent outline-none placeholder:text-gray-300"
+              className="w-1/2 p-3.5 text-[13px] bg-transparent outline-none placeholder:text-gray-300 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
               value={data.senderRegNo || ''}
               onChange={(e) => updateField('senderRegNo', e.target.value)}
             />
-             <input 
+             <input
+              aria-label={t('sstNo')}
               placeholder={t('sstNo')}
-              className="w-1/2 p-3.5 text-[13px] bg-transparent outline-none placeholder:text-gray-300"
+              className="w-1/2 p-3.5 text-[13px] bg-transparent outline-none placeholder:text-gray-300 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
               value={data.senderSstNo || ''}
               onChange={(e) => updateField('senderSstNo', e.target.value)}
             />
@@ -187,26 +196,29 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
            <span className="text-xs font-semibold text-gray-400 uppercase">{t('toClient')}</span>
         </div>
         <div className={rowClass}>
-          <input 
+          <input
+            aria-label={t('clientName')}
             placeholder={t('clientName')}
-            className="w-full text-[15px] font-medium bg-transparent outline-none placeholder:text-gray-300"
+            className="w-full text-[15px] font-medium bg-transparent outline-none placeholder:text-gray-300 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
             value={data.clientName}
             onChange={(e) => updateField('clientName', e.target.value)}
           />
         </div>
          <div className={rowClass}>
-          <input 
+          <input
+            aria-label={t('clientEmail')}
             placeholder={t('clientEmail')}
-            className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-300"
+            className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-300 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
             value={data.clientEmail}
             onChange={(e) => updateField('clientEmail', e.target.value)}
           />
         </div>
          <div className={rowClass}>
-             <textarea 
+             <textarea
+              aria-label={t('clientAddress')}
               placeholder={t('clientAddress')}
               rows={2}
-              className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-300 resize-none py-1"
+              className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-300 resize-none py-1 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
               value={data.clientAddress}
               onChange={(e) => updateField('clientAddress', e.target.value)}
             />
@@ -216,11 +228,11 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
       {/* SECTION: ITEMS */}
       <div className="flex items-center justify-between mb-2 ml-3 mr-1">
          <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t('lineItems')}</h3>
-         <button onClick={addItem} className="text-brand-500 hover:text-brand-600 transition-colors">
+         <button onClick={addItem} aria-label={t('addItem') || 'Add item'} className="text-brand-500 hover:text-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 rounded-full">
             <Plus className="w-5 h-5" />
          </button>
       </div>
-      
+
       <div className="space-y-3 mb-6">
         {data.items.map((item, idx) => (
           <div key={item.id} className="bg-white dark:bg-[#1C1C1E] rounded-xl overflow-hidden shadow-sm group">
@@ -229,6 +241,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
                   <input
                     type="text"
                     placeholder={t('description')}
+                    aria-label={`${t('description')} ${idx + 1}`}
                     value={item.description}
                     onChange={(e) => updateItem(item.id, 'description', e.target.value)}
                     className="w-full text-[15px] font-medium placeholder:text-gray-300 outline-none bg-transparent"
@@ -239,6 +252,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
                         <input
                           type="number"
                           min="0"
+                          aria-label={`Quantity for item ${idx + 1}`}
                           value={item.quantity}
                           onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
                           className="w-12 bg-transparent text-[13px] text-center font-medium outline-none"
@@ -250,6 +264,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
                         <input
                           type="number"
                           min="0"
+                          aria-label={`Rate for item ${idx + 1}`}
                           value={item.rate}
                           onChange={(e) => updateItem(item.id, 'rate', parseFloat(e.target.value) || 0)}
                           className="w-full bg-transparent text-[13px] font-medium outline-none"
@@ -257,11 +272,12 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
                      </div>
                   </div>
                </div>
-               
+
                <div className="flex flex-col items-end gap-2">
-                 <button 
+                 <button
                   onClick={() => removeItem(item.id)}
-                  className="text-gray-300 hover:text-red-500 transition-colors p-1"
+                  aria-label={`Remove item ${idx + 1}`}
+                  className="text-gray-300 hover:text-red-500 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded-full"
                 >
                   <MinusCircle className="w-5 h-5" />
                 </button>
@@ -283,9 +299,10 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
        <h3 className={sectionTitleClass}>{t('settingsNotes')}</h3>
        <div className={groupClass}>
           <div className={rowClass}>
-            <span className={labelClass}>{t('taxSst')} (%)</span>
-            <input 
-              type="number" 
+            <label htmlFor="tax-rate" className={labelClass}>{t('taxSst')} (%)</label>
+            <input
+              id="tax-rate"
+              type="number"
               min="0"
               max="100"
               value={data.taxRate}
@@ -297,7 +314,9 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
              <div className="px-3.5 py-2 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5">
                 <span className="text-xs font-semibold text-gray-400 uppercase">{t('termsNotes')}</span>
              </div>
-             <textarea 
+             <textarea
+                id="notes"
+                aria-label={t('termsNotes')}
                 rows={4}
                 value={data.notes}
                 onChange={(e) => updateField('notes', e.target.value)}
