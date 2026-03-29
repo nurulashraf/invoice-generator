@@ -26,7 +26,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
 
   const addItem = () => {
     const newItem: LineItem = {
-      id: Math.random().toString(36).slice(2, 11),
+      id: crypto.randomUUID(),
       description: '',
       quantity: 1,
       rate: 0

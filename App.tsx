@@ -200,7 +200,7 @@ export default function App() {
       clientAddress: '',
       notes: defaults.notes,
       items: [{
-        id: Math.random().toString(36).slice(2, 11),
+        id: crypto.randomUUID(),
         description: '',
         quantity: 1,
         rate: 0
@@ -330,7 +330,7 @@ export default function App() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-bold text-[#1D1D1F] dark:text-white">
-                      {inv.items.reduce((acc, i) => acc + (i.quantity * i.rate), 0).toLocaleString(locale, { style: 'currency', currency: inv.currency })}
+                      {inv.items.reduce((acc, i) => acc + (i.quantity * i.rate), 0).toLocaleString(locale === 'ms' ? 'ms-MY' : 'en-MY', { style: 'currency', currency: inv.currency })}
                     </span>
                     <button
                       onClick={(e) => deleteInvoice(e, inv.id)}
@@ -368,7 +368,7 @@ export default function App() {
         >
           
           {showMobilePreview && (
-             <div className="no-print flex justify-between items-center mb-6 lg:hidden pt-safe">
+             <div className="no-print flex justify-between items-center mb-6 lg:hidden">
                 <h2 className="text-xl font-bold text-[#1D1D1F] dark:text-white">{t('preview')}</h2>
                 <div className="flex gap-3">
                    <button

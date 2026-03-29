@@ -48,7 +48,8 @@ function checkForUpdates() {
   autoUpdater.autoDownload = false;
 
   autoUpdater.on('update-available', (info) => {
-    dialog.showMessageBox(mainWindow!, {
+    if (!mainWindow) return;
+    dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Update Available',
       message: `SmartInvoice v${info.version} is available. You are running v${app.getVersion()}.`,
