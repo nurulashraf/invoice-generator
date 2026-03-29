@@ -72,7 +72,8 @@ const translations = {
     closeHistory: 'Close history',
     closePreview: 'Close preview',
     dismissNotification: 'Dismiss notification',
-    logoTooLarge: 'Logo must be under 2 MB'
+    logoTooLarge: 'Logo must be under 2 MB',
+    storageFull: 'Storage full. Consider deleting old invoices.'
   },
   ms: {
     appTitle: 'SmartInvoice',
@@ -143,7 +144,8 @@ const translations = {
     closeHistory: 'Tutup sejarah',
     closePreview: 'Tutup pratonton',
     dismissNotification: 'Tutup pemberitahuan',
-    logoTooLarge: 'Logo mestilah kurang daripada 2 MB'
+    logoTooLarge: 'Logo mestilah kurang daripada 2 MB',
+    storageFull: 'Storan penuh. Pertimbangkan untuk memadam invois lama.'
   }
 };
 
@@ -156,7 +158,15 @@ interface I18nContextType {
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
 export const I18nProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [locale, setLocale] = useState<Locale>('en');
+  const [locale, setLocaleState] = useState<Locale>(() => {
+    const saved = localStorage.getItem('locale');
+    return saved === 'ms' ? 'ms' : 'en';
+  });
+
+  const setLocale = useCallback((l: Locale) => {
+    setLocaleState(l);
+    localStorage.setItem('locale', l);
+  }, []);
 
   const t = useCallback((key: keyof typeof translations['en']) => {
     return translations[locale][key] || key;

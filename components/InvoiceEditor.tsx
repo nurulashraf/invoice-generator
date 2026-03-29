@@ -10,14 +10,14 @@ interface InvoiceEditorProps {
 }
 
 export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) => {
-  const { t } = useI18n();
-  // Flattened view for minimalism - sections are just headers in the scroll flow
+  const { t, locale } = useI18n();
+  const formatLocale = locale === 'ms' ? 'ms-MY' : 'en-MY';
 
-  const updateField = (field: keyof InvoiceData, value: any) => {
+  const updateField = <K extends keyof InvoiceData>(field: K, value: InvoiceData[K]) => {
     onChange({ ...data, [field]: value });
   };
 
-  const updateItem = (id: string, field: keyof LineItem, value: any) => {
+  const updateItem = (id: string, field: keyof LineItem, value: string | number) => {
     const newItems = data.items.map(item =>
       item.id === id ? { ...item, [field]: value } : item
     );
@@ -282,7 +282,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
                   <MinusCircle className="w-5 h-5" />
                 </button>
                 <div className="text-[13px] font-bold text-[#1D1D1F] dark:text-white mt-auto">
-                   {(item.quantity * item.rate).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                   {(item.quantity * item.rate).toLocaleString(formatLocale, { minimumFractionDigits: 2 })}
                 </div>
                </div>
             </div>

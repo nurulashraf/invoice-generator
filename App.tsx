@@ -22,7 +22,7 @@ export default function App() {
 
   // Toast Helpers
   const addToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    const id = Math.random().toString(36).substr(2, 9);
+    const id = crypto.randomUUID();
     setToasts((prev) => [...prev, { id, message, type }]);
   };
 
@@ -56,8 +56,9 @@ export default function App() {
       setIsDesktop(window.innerWidth >= 1024);
       if (previewContainerRef.current) {
         const containerWidth = previewContainerRef.current.offsetWidth;
-        const targetWidth = 794; // A4 width in pixels
-        const scale = Math.min(1, (containerWidth - 40) / targetWidth);
+        const A4_WIDTH_PX = 794;
+        const CONTAINER_PADDING = 40;
+        const scale = Math.min(1, (containerWidth - CONTAINER_PADDING) / A4_WIDTH_PX);
         setPreviewScale(scale);
       }
     };
@@ -118,10 +119,17 @@ export default function App() {
 
   // Auto-save effect
   useEffect(() => {
-    localStorage.setItem('invoiceDraft', JSON.stringify(invoice));
+    try {
+      localStorage.setItem('invoiceDraft', JSON.stringify(invoice));
+    } catch (e) {
+      // Draft save failed — quota exceeded
+    }
     const timeoutId = setTimeout(() => {
-      const updatedHistory = saveInvoiceToHistory(invoice);
-      setSavedInvoices(updatedHistory);
+      const { invoices, quotaExceeded } = saveInvoiceToHistory(invoice);
+      setSavedInvoices(invoices);
+      if (quotaExceeded) {
+        addToast(t('storageFull') || 'Storage full. Consider deleting old invoices.', 'error');
+      }
     }, 1000);
     return () => clearTimeout(timeoutId);
   }, [invoice]);
@@ -142,7 +150,7 @@ export default function App() {
       const opt = {
         margin: 0,
         filename: `${invoice.invoiceNumber || 'invoice'}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
+        image: { type: 'jpeg' as const, quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
@@ -167,15 +175,7 @@ export default function App() {
   const handleNewInvoice = () => {
     if (!window.confirm(t('confirmNew'))) return;
 
-    const currentStored = localStorage.getItem('invoiceCounter');
-    let currentCounter = 0;
-    if (currentStored) {
-      const parsed = parseInt(currentStored, 10);
-      if (!isNaN(parsed)) currentCounter = parsed;
-    }
-    localStorage.setItem('invoiceCounter', String(currentCounter + 1));
-
-    const nextNumber = `INV-${String(currentCounter + 1).padStart(3, '0')}`;
+    const nextNumber = getNextInvoiceNumber();
     const today = new Date().toISOString().split('T')[0];
     const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const defaults = createDefaultInvoice();
