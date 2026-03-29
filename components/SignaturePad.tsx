@@ -93,6 +93,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
         ref={canvasRef}
         width={300}
         height={150}
+        aria-label="Signature drawing area"
         className="w-full bg-white rounded-lg cursor-crosshair touch-none shadow-sm"
         onMouseDown={startDrawing}
         onMouseMove={draw}
@@ -105,7 +106,8 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
       <div className="flex justify-end mt-3">
         <button
           onClick={clear}
-          className="flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-600 px-3 py-1.5 rounded-full hover:bg-white dark:hover:bg-white/10 transition-colors"
+          aria-label="Clear signature"
+          className="flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-600 px-3 py-1.5 rounded-full hover:bg-white dark:hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500"
         >
           <Eraser className="w-3.5 h-3.5" /> {t('clear')}
         </button>
