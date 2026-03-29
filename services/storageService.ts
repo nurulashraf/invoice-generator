@@ -8,7 +8,7 @@ export const getStoredInvoices = (): InvoiceData[] => {
     const stored = localStorage.getItem(STORAGE_KEY);
     return stored ? JSON.parse(stored) : [];
   } catch (e) {
-    console.error('Failed to load invoice history', e);
+    if (import.meta.env.DEV) console.error('Failed to load invoice history', e);
     return [];
   }
 };

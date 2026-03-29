@@ -102,7 +102,7 @@ export default function App() {
           const defaultInv = createDefaultInvoice();
           return { ...defaultInv, ...parsed, id: parsed.id || defaultInv.id };
         } catch (e) {
-          console.error('Failed to parse invoice draft', e);
+          if (import.meta.env.DEV) console.error('Failed to parse invoice draft', e);
         }
       }
     }
@@ -159,7 +159,7 @@ export default function App() {
       addToast('PDF Downloaded successfully', 'success');
 
     } catch (error) {
-      console.error('PDF Export Error:', error);
+      if (import.meta.env.DEV) console.error('PDF Export Error:', error);
       addToast('Failed to generate PDF. Falling back to print.', 'error');
       setTimeout(() => window.print(), 1000);
     } finally {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { InvoiceData, LineItem } from '../types';
-import { Plus, Trash2, ChevronRight, Image as ImageIcon, PenTool, Layout, FileType, Users, ShoppingCart, MinusCircle } from 'lucide-react';
+import { Plus, Trash2, ChevronRight, Image as ImageIcon, MinusCircle } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { SignaturePad } from './SignaturePad';
 
