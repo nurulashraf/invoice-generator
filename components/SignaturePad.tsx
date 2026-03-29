@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Eraser } from 'lucide-react';
+import { Eraser, Undo2 } from 'lucide-react';
 import { useI18n } from '../i18n';
 
 interface SignaturePadProps {
@@ -11,8 +11,14 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const { t } = useI18n();
+  const historyRef = useRef<string[]>([]);
+  const prevValueRef = useRef<string | undefined>(undefined);
 
+  // Only redraw when initialValue content actually changes
   useEffect(() => {
+    if (initialValue === prevValueRef.current) return;
+    prevValueRef.current = initialValue;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -25,6 +31,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
       };
       img.src = initialValue;
     }
+    historyRef.current = [];
   }, [initialValue]);
 
   const getCanvasCoords = (canvas: HTMLCanvasElement, e: React.MouseEvent | React.TouchEvent) => {
@@ -72,10 +79,36 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
     if (isDrawing) {
       const canvas = canvasRef.current;
       if (canvas) {
-        onChange(canvas.toDataURL());
+        const dataUrl = canvas.toDataURL();
+        // Save to history (max 20 entries)
+        historyRef.current = [...historyRef.current.slice(-19), dataUrl];
+        onChange(dataUrl);
       }
     }
     setIsDrawing(false);
+  };
+
+  const undo = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    historyRef.current.pop(); // remove current state
+    const previous = historyRef.current[historyRef.current.length - 1];
+
+    if (previous) {
+      const img = new Image();
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+      };
+      img.src = previous;
+      onChange(previous);
+    } else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      onChange(undefined);
+    }
   };
 
   const clear = () => {
@@ -85,6 +118,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
       ctx?.clearRect(0, 0, canvas.width, canvas.height);
       onChange(undefined);
     }
+    historyRef.current = [];
   };
 
   return (
@@ -103,7 +137,15 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
         onTouchMove={draw}
         onTouchEnd={stopDrawing}
       />
-      <div className="flex justify-end mt-3">
+      <div className="flex justify-end mt-3 gap-2">
+        <button
+          onClick={undo}
+          disabled={historyRef.current.length === 0}
+          aria-label="Undo last stroke"
+          className="flex items-center gap-1.5 text-xs font-semibold text-brand-500 hover:text-brand-600 px-3 py-1.5 rounded-full hover:bg-white dark:hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <Undo2 className="w-3.5 h-3.5" /> {t('undo')}
+        </button>
         <button
           onClick={clear}
           aria-label="Clear signature"
