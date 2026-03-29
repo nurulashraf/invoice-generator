@@ -24,14 +24,16 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let cancelled = false;
     if (initialValue) {
       const img = new Image();
       img.onload = () => {
-        ctx.drawImage(img, 0, 0);
+        if (!cancelled) ctx.drawImage(img, 0, 0);
       };
       img.src = initialValue;
     }
     historyRef.current = [];
+    return () => { cancelled = true; };
   }, [initialValue]);
 
   const getCanvasCoords = (canvas: HTMLCanvasElement, e: React.MouseEvent | React.TouchEvent) => {
@@ -100,6 +102,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
     if (previous) {
       const img = new Image();
       img.onload = () => {
+        if (!canvasRef.current) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0);
       };
