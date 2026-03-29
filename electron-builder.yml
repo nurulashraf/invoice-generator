@@ -1,0 +1,14 @@
+appId: com.smartinvoice.app
+productName: SmartInvoice
+directories:
+  output: release
+files:
+  - dist/**/*
+  - electron-out/**/*.js
+win:
+  target: portable
+  icon: assets/icon.ico
+portable:
+  artifactName: SmartInvoice-${version}-portable.exe
+publish:
+  provider: github
