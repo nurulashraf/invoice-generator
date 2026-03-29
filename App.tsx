@@ -227,7 +227,7 @@ export default function App() {
   const toggleLanguage = () => setLocale(locale === 'en' ? 'ms' : 'en');
 
   // Styles
-  const navBtnClass = "p-2 rounded-full text-[#1D1D1F] dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-95";
+  const navBtnClass = "p-2 rounded-full text-[#1D1D1F] dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2";
 
   return (
     <div className="min-h-screen bg-[#F5F5F7] dark:bg-[#000000] flex flex-col font-sans">
@@ -247,36 +247,38 @@ export default function App() {
             </div>
             
             <div className="flex items-center gap-1 md:gap-2">
-               <button onClick={() => setShowHistory(true)} className={navBtnClass} title={t('history')}>
+               <button onClick={() => setShowHistory(true)} className={navBtnClass} title={t('history')} aria-label={t('history')}>
                  <History className="w-5 h-5" strokeWidth={1.5} />
                </button>
 
-               <button onClick={toggleTheme} className={navBtnClass}>
+               <button onClick={toggleTheme} className={navBtnClass} aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}>
                  {theme === 'light' ? <Moon className="w-5 h-5" strokeWidth={1.5} /> : <Sun className="w-5 h-5" strokeWidth={1.5} />}
                </button>
 
-               <button onClick={toggleLanguage} className={`${navBtnClass} flex items-center gap-1`}>
+               <button onClick={toggleLanguage} className={`${navBtnClass} flex items-center gap-1`} aria-label="Switch language">
                  <Globe className="w-5 h-5" strokeWidth={1.5} />
                  <span className="text-[10px] font-bold uppercase pt-0.5">{locale}</span>
                </button>
 
-               <button onClick={handleNewInvoice} className={navBtnClass}>
+               <button onClick={handleNewInvoice} className={navBtnClass} aria-label={t('newInvoice')}>
                  <Plus className="w-5 h-5" strokeWidth={1.5} />
                </button>
 
                <button
                 onClick={handleExportPDF}
                 disabled={isExporting}
-                className={`hidden md:flex items-center gap-2 px-4 py-1.5 bg-brand-500 text-white rounded-full hover:bg-brand-600 active:scale-95 transition-all shadow-md text-xs font-semibold ml-2 ${isExporting ? 'opacity-70 cursor-wait' : ''}`}
+                aria-busy={isExporting}
+                className={`hidden md:flex items-center gap-2 px-4 py-1.5 bg-brand-500 text-white rounded-full hover:bg-brand-600 active:scale-95 transition-all shadow-md text-xs font-semibold ml-2 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 ${isExporting ? 'opacity-70 cursor-wait' : ''}`}
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>{isExporting ? 'Exporting...' : 'Export PDF'}</span>
               </button>
 
                {/* Mobile Toggle */}
-               <button 
+               <button
                 onClick={() => setShowMobilePreview(!showMobilePreview)}
-                className="md:hidden p-2 text-brand-500 bg-brand-500/10 rounded-full ml-1"
+                className="md:hidden p-2 text-brand-500 bg-brand-500/10 rounded-full ml-1 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                aria-label={t('preview')}
               >
                 {showMobilePreview ? <LayoutTemplate className="w-5 h-5" /> : <Printer className="w-5 h-5" />}
               </button>
@@ -286,14 +288,14 @@ export default function App() {
 
       {/* History Sidebar - macOS Style */}
       {showHistory && (
-        <div className="fixed inset-0 z-50 flex">
+        <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-labelledby="history-title" onKeyDown={(e) => { if (e.key === 'Escape') setShowHistory(false); }}>
           <div className="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity" onClick={() => setShowHistory(false)} />
           <div className="relative w-80 bg-[#F5F5F7]/95 dark:bg-[#1C1C1E]/95 backdrop-blur-2xl h-full shadow-2xl flex flex-col border-r border-gray-200 dark:border-white/10 animate-in slide-in-from-left duration-300 ease-out">
             <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-white/10">
-              <h2 className="text-lg font-semibold text-[#1D1D1F] dark:text-white">
+              <h2 id="history-title" className="text-lg font-semibold text-[#1D1D1F] dark:text-white">
                 {t('history')}
               </h2>
-              <button onClick={() => setShowHistory(false)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-white">
+              <button onClick={() => setShowHistory(false)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2" aria-label="Close history">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -305,12 +307,15 @@ export default function App() {
                 </div>
               )}
               {savedInvoices.map(inv => (
-                <div 
-                  key={inv.id} 
+                <div
+                  key={inv.id}
                   onClick={() => loadInvoice(inv)}
-                  className={`group relative p-3 rounded-xl cursor-pointer transition-all duration-200 border ${
-                    invoice.id === inv.id 
-                    ? 'bg-white dark:bg-white/10 border-brand-500/30 shadow-sm' 
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') loadInvoice(inv); }}
+                  className={`group relative p-3 rounded-xl cursor-pointer transition-all duration-200 border focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-inset ${
+                    invoice.id === inv.id
+                    ? 'bg-white dark:bg-white/10 border-brand-500/30 shadow-sm'
                     : 'bg-white/50 dark:bg-white/5 border-transparent hover:bg-white dark:hover:bg-white/10'
                   }`}
                 >
@@ -325,9 +330,10 @@ export default function App() {
                     <span className="text-xs font-bold text-[#1D1D1F] dark:text-white">
                       {inv.items.reduce((acc, i) => acc + (i.quantity * i.rate), 0).toLocaleString(locale, { style: 'currency', currency: inv.currency })}
                     </span>
-                    <button 
+                    <button
                       onClick={(e) => deleteInvoice(e, inv.id)}
-                      className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                      className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1"
+                      aria-label={`Delete invoice ${inv.invoiceNumber}`}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -353,9 +359,10 @@ export default function App() {
         </div>
 
         {/* Preview Column - Sticky Right Side */}
-        <div 
+        <div
           ref={previewContainerRef}
           className={`lg:col-span-7 xl:col-span-8 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] ${showMobilePreview ? 'fixed inset-0 z-50 bg-[#F5F5F7] dark:bg-black p-4 overflow-y-auto' : 'hidden'} lg:block lg:overflow-y-auto flex flex-col no-scrollbar`}
+          {...(showMobilePreview ? { role: 'dialog', 'aria-modal': true, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Escape') setShowMobilePreview(false); } } : {})}
         >
           
           {showMobilePreview && (
@@ -365,13 +372,15 @@ export default function App() {
                    <button
                     onClick={handleExportPDF}
                     disabled={isExporting}
-                    className={`px-4 py-2 bg-brand-500 text-white rounded-full font-medium text-sm shadow-md ${isExporting ? 'opacity-70' : ''}`}
+                    aria-busy={isExporting}
+                    className={`px-4 py-2 bg-brand-500 text-white rounded-full font-medium text-sm shadow-md focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 ${isExporting ? 'opacity-70' : ''}`}
                   >
                     {isExporting ? 'Exporting...' : 'Export PDF'}
                   </button>
                   <button
                     onClick={() => setShowMobilePreview(false)}
-                    className="p-2 bg-white dark:bg-white/10 rounded-full text-gray-600 dark:text-gray-300"
+                    className="p-2 bg-white dark:bg-white/10 rounded-full text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
+                    aria-label="Close preview"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -399,13 +408,15 @@ export default function App() {
         <div className="lg:hidden fixed bottom-6 right-6 z-30 no-print flex flex-col gap-4">
            <button
             onClick={handleNewInvoice}
-            className="flex items-center justify-center w-14 h-14 bg-white dark:bg-[#1C1C1E] text-gray-600 dark:text-gray-300 rounded-full shadow-float border border-white/10 active:scale-90 transition-transform"
+            aria-label={t('newInvoice')}
+            className="flex items-center justify-center w-14 h-14 bg-white dark:bg-[#1C1C1E] text-gray-600 dark:text-gray-300 rounded-full shadow-float border border-white/10 active:scale-90 transition-transform focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
           >
             <Plus className="w-6 h-6" />
           </button>
           <button
             onClick={() => setShowMobilePreview(true)}
-            className="flex items-center justify-center w-14 h-14 bg-[#1D1D1F] dark:bg-white text-white dark:text-black rounded-full shadow-float active:scale-90 transition-transform"
+            aria-label={t('preview')}
+            className="flex items-center justify-center w-14 h-14 bg-[#1D1D1F] dark:bg-white text-white dark:text-black rounded-full shadow-float active:scale-90 transition-transform focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
           >
             <Printer className="w-6 h-6" />
           </button>
