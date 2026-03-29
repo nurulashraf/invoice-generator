@@ -138,13 +138,14 @@ export default function App() {
     setIsExporting(true);
     addToast(t('generatingPdf'), 'info');
 
+    const element = document.getElementById('invoice-preview');
+    const scaledParent = element?.parentElement as HTMLElement | null;
+    const originalTransform = scaledParent?.style.transform || '';
+
     try {
-      const element = document.getElementById('invoice-preview');
       if (!element) throw new Error('Preview not found');
 
       // Temporarily reset parent scale transform for accurate capture
-      const scaledParent = element.parentElement as HTMLElement | null;
-      const originalTransform = scaledParent?.style.transform || '';
       if (scaledParent) scaledParent.style.transform = 'none';
 
       const opt = {
@@ -157,17 +158,14 @@ export default function App() {
       };
 
       await html2pdf().set(opt).from(element).save();
-
-      // Restore scale transform
-      if (scaledParent) scaledParent.style.transform = originalTransform;
-
       addToast(t('pdfSuccess'), 'success');
 
     } catch (error) {
       console.error('PDF Export Error:', error);
       addToast(t('pdfError'), 'error');
-      setTimeout(() => window.print(), 1000);
+      window.print();
     } finally {
+      if (scaledParent) scaledParent.style.transform = originalTransform;
       setIsExporting(false);
     }
   };
