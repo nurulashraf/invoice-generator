@@ -16,7 +16,7 @@ A beautifully crafted desktop invoice generator with an Apple-inspired interface
 ### Desktop App
 - **Portable:** Single `.exe` file — no installer, no setup. Just download and run.
 - **Offline:** Works entirely offline. No internet connection needed after download.
-- **Auto-Updates:** Automatically checks for new versions on launch via GitHub Releases.
+- **Update Notifications:** Checks for new versions on launch and prompts you to download from GitHub Releases.
 - **Private:** All data stays on your machine in local storage. Nothing is sent anywhere.
 
 ### Professional PDF Engine
@@ -46,7 +46,7 @@ A beautifully crafted desktop invoice generator with an Apple-inspired interface
 2. Download `SmartInvoice-x.x.x-portable.exe`
 3. Run it — no installation needed
 
-The app auto-updates when new versions are published.
+The app notifies you when a new version is available.
 
 ### For Developers
 
@@ -85,7 +85,7 @@ npm run electron:build
 | **Icons** | Lucide React |
 | **Animations** | Framer Motion |
 | **Build** | Vite 6 + electron-builder |
-| **Auto-Updates** | electron-updater via GitHub Releases |
+| **Update Check** | electron-updater via GitHub Releases |
 
 ---
 
