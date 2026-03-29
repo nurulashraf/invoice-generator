@@ -40,13 +40,16 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        updateField('logo', reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert(t('logoTooLarge') || 'Logo must be under 2 MB');
+      return;
     }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      updateField('logo', reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   // iOS-style Grouped List Classes

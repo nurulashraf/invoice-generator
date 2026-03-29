@@ -8,7 +8,7 @@ export const getStoredInvoices = (): InvoiceData[] => {
     const stored = localStorage.getItem(STORAGE_KEY);
     return stored ? JSON.parse(stored) : [];
   } catch (e) {
-    if (import.meta.env.DEV) console.error('Failed to load invoice history', e);
+    console.error('Failed to load invoice history', e);
     return [];
   }
 };
@@ -23,12 +23,20 @@ export const saveInvoiceToHistory = (invoice: InvoiceData) => {
     invoices.unshift(invoice); // Add to top
   }
   
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(invoices));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(invoices));
+  } catch (e) {
+    console.error('Failed to save invoice history: storage quota exceeded', e);
+  }
   return invoices;
 };
 
 export const deleteInvoiceFromHistory = (id: string) => {
   const invoices = getStoredInvoices().filter(i => i.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(invoices));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(invoices));
+  } catch (e) {
+    console.error('Failed to save invoice history after delete', e);
+  }
   return invoices;
 };

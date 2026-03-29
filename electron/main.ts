@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, dialog, shell, session } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import path from 'path';
 
@@ -14,6 +14,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
     },
   });
 
@@ -28,11 +29,48 @@ function createWindow() {
   });
 }
 
+function setupCSP() {
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:"
+        ],
+      },
+    });
+  });
+}
+
+function checkForUpdates() {
+  // Portable builds can't silently auto-update (no install location to write to).
+  // Instead, detect new versions and offer to open the releases page.
+  autoUpdater.autoDownload = false;
+
+  autoUpdater.on('update-available', (info) => {
+    dialog.showMessageBox(mainWindow!, {
+      type: 'info',
+      title: 'Update Available',
+      message: `SmartInvoice v${info.version} is available. You are running v${app.getVersion()}.`,
+      detail: 'Would you like to open the download page?',
+      buttons: ['Download', 'Later'],
+      defaultId: 0,
+    }).then((result) => {
+      if (result.response === 0) {
+        shell.openExternal('https://github.com/nurulashraf/invoice-generator/releases/latest');
+      }
+    });
+  });
+
+  autoUpdater.checkForUpdates();
+}
+
 app.whenReady().then(() => {
+  setupCSP();
   createWindow();
 
   if (!isDev) {
-    autoUpdater.checkForUpdatesAndNotify();
+    checkForUpdates();
   }
 
   app.on('activate', () => {

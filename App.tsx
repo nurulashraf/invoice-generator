@@ -102,7 +102,7 @@ export default function App() {
           const defaultInv = createDefaultInvoice();
           return { ...defaultInv, ...parsed, id: parsed.id || defaultInv.id };
         } catch (e) {
-          if (import.meta.env.DEV) console.error('Failed to parse invoice draft', e);
+          console.error('Failed to parse invoice draft', e);
         }
       }
     }
@@ -129,11 +129,6 @@ export default function App() {
     addToast('Generating PDF...', 'info');
 
     try {
-      if (!html2pdf) {
-        window.print();
-        return;
-      }
-
       const element = document.getElementById('invoice-preview');
       if (!element) throw new Error('Preview not found');
 
@@ -159,7 +154,7 @@ export default function App() {
       addToast('PDF Downloaded successfully', 'success');
 
     } catch (error) {
-      if (import.meta.env.DEV) console.error('PDF Export Error:', error);
+      console.error('PDF Export Error:', error);
       addToast('Failed to generate PDF. Falling back to print.', 'error');
       setTimeout(() => window.print(), 1000);
     } finally {

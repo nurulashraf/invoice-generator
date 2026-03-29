@@ -63,3 +63,4 @@ Uses `html2pdf.js` (npm package). Renders the `#invoice-preview` DOM element to 
 - Logo and signature images stored as Base64 data URLs in invoice state
 - Default invoice data is Malaysia-focused (MYR currency, 6% SST tax rate)
 - Electron main process compiled separately via `tsconfig.electron.json` (CommonJS output to `electron-out/`)
+- Git commits use conventional format: `feat:`, `fix:`, `chore:`, `docs:`, `ci:`
