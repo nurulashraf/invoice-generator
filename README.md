@@ -1,6 +1,6 @@
 # SmartInvoice
 
-![Electron](https://img.shields.io/badge/Electron-33-47848F?style=flat-square&logo=electron)
+![Electron](https://img.shields.io/badge/Electron-42-47848F?style=flat-square&logo=electron)
 ![React](https://img.shields.io/badge/React-19-blue?style=flat-square&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue?style=flat-square&logo=typescript)
 ![Tailwind](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=flat-square&logo=tailwindcss)
@@ -70,6 +70,10 @@ npm run electron:build
 | `npm run build:electron` | Compile Electron main process TypeScript |
 | `npm run electron:dev` | Launch Vite + Electron concurrently for development |
 | `npm run electron:build` | Build portable Windows `.exe` (outputs to `release/`) |
+| `npm run typecheck` | Type-check the app with `tsc` (no emit) |
+| `npm run lint` | Lint the codebase with ESLint |
+| `npm run test` | Run the Vitest suite in watch mode |
+| `npm run test:run` | Run the Vitest suite once (used in CI) |
 
 ---
 
@@ -77,7 +81,7 @@ npm run electron:build
 
 | Layer | Technology |
 | --- | --- |
-| **Desktop Shell** | Electron 33 |
+| **Desktop Shell** | Electron 42 |
 | **Framework** | React 19 |
 | **Language** | TypeScript (strict) |
 | **Styling** | Tailwind CSS 3 (PostCSS) |
@@ -86,6 +90,31 @@ npm run electron:build
 | **Animations** | Framer Motion |
 | **Build** | Vite 6 + electron-builder |
 | **Update Check** | electron-updater via GitHub Releases |
+| **Testing** | Vitest (jsdom) |
+| **Quality** | ESLint + TypeScript type-checking |
+
+---
+
+## Testing & Quality
+
+Core logic — invoice calculations, pagination, draft validation, invoice
+numbering, and local storage — is covered by a [Vitest](https://vitest.dev)
+suite under `services/`. Continuous integration runs type-checking, linting, and
+the test suite on every release tag before the portable `.exe` is built, so a
+broken build never ships.
+
+```bash
+npm run test:run    # run all tests once
+npm run typecheck   # type-check without emitting
+npm run lint        # lint
+```
+
+---
+
+## Security
+
+- **Hardened renderer:** `contextIsolation` and `sandbox` are enabled, `nodeIntegration` is disabled, and a Content-Security-Policy restricts what the renderer can load.
+- **Navigation guard:** the renderer cannot open new windows or navigate away from the app; external links are handed off to your default browser.
 
 ---
 

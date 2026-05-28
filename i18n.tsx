@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { loadLocale, saveLocale } from './services/storageService';
 
 type Locale = 'en' | 'ms';
 
@@ -158,14 +159,13 @@ interface I18nContextType {
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
 export const I18nProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [locale, setLocaleState] = useState<Locale>(() => {
-    const saved = localStorage.getItem('locale');
-    return saved === 'ms' ? 'ms' : 'en';
-  });
+  const [locale, setLocaleState] = useState<Locale>(() =>
+    loadLocale() === 'ms' ? 'ms' : 'en'
+  );
 
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l);
-    localStorage.setItem('locale', l);
+    saveLocale(l);
   }, []);
 
   const t = useCallback((key: keyof typeof translations['en']) => {

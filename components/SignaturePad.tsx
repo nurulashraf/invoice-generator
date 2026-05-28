@@ -11,7 +11,9 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const { t } = useI18n();
-  const historyRef = useRef<string[]>([]);
+  // Undo stack lives in state so the Undo button's disabled state and the
+  // component re-render correctly after each stroke (a ref would not re-render).
+  const [history, setHistory] = useState<string[]>([]);
   const prevValueRef = useRef<string | undefined>(undefined);
 
   // Only redraw when initialValue content actually changes
@@ -32,7 +34,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
       };
       img.src = initialValue;
     }
-    historyRef.current = [];
+    setHistory([]);
     return () => { cancelled = true; };
   }, [initialValue]);
 
@@ -84,7 +86,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
       if (canvas) {
         const dataUrl = canvas.toDataURL();
         // Save to history (max 20 entries)
-        historyRef.current = [...historyRef.current.slice(-19), dataUrl];
+        setHistory(prev => [...prev.slice(-19), dataUrl]);
         onChange(dataUrl);
       }
     }
@@ -97,8 +99,9 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    historyRef.current.pop(); // remove current state
-    const previous = historyRef.current[historyRef.current.length - 1];
+    const next = history.slice(0, -1); // remove current state
+    const previous = next[next.length - 1];
+    setHistory(next);
 
     if (previous) {
       const img = new Image();
@@ -122,7 +125,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
       ctx?.clearRect(0, 0, canvas.width, canvas.height);
       onChange(undefined);
     }
-    historyRef.current = [];
+    setHistory([]);
   };
 
   return (
@@ -144,7 +147,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ initialValue, onChan
       <div className="flex justify-end mt-3 gap-2">
         <button
           onClick={undo}
-          disabled={historyRef.current.length === 0}
+          disabled={history.length === 0}
           aria-label="Undo last stroke"
           className="flex items-center gap-1.5 text-xs font-semibold text-brand-500 hover:text-brand-600 px-3 py-1.5 rounded-full hover:bg-white dark:hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-40 disabled:cursor-not-allowed"
         >

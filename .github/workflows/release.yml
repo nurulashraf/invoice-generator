@@ -3,7 +3,7 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
   contents: write
@@ -20,6 +20,16 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Lint (informational)
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:run
+
       - run: npm run build
       - run: npm run build:electron
 

@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { InvoiceData, LineItem } from '../types';
-import { Plus, Trash2, ChevronRight, Image as ImageIcon, MinusCircle } from 'lucide-react';
+import { Plus, ChevronRight, Image as ImageIcon, MinusCircle } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { SignaturePad } from './SignaturePad';
 
 interface InvoiceEditorProps {
   data: InvoiceData;
   onChange: (data: InvoiceData) => void;
+  onNotify?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) => {
+export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange, onNotify }) => {
   const { t, locale } = useI18n();
   const formatLocale = locale === 'ms' ? 'ms-MY' : 'en-MY';
 
@@ -42,7 +43,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      alert(t('logoTooLarge'));
+      onNotify?.(t('logoTooLarge'), 'error');
       return;
     }
     const reader = new FileReader();
@@ -56,7 +57,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
   const groupClass = "bg-white dark:bg-[#1C1C1E] rounded-xl overflow-hidden shadow-sm mb-6";
   const rowClass = "relative flex items-center justify-between p-3.5 border-b border-gray-100 dark:border-white/5 last:border-0";
   const labelClass = "text-[15px] text-[#1D1D1F] dark:text-white font-medium min-w-[100px]";
-  const inputClass = "flex-1 text-right bg-transparent text-[15px] text-gray-600 dark:text-gray-300 placeholder:text-gray-300 outline-none transition-colors focus:text-brand-500 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded";
+  const inputClass = "flex-1 text-right bg-transparent text-[15px] text-gray-600 dark:text-gray-300 placeholder:text-gray-500 outline-none transition-colors focus:text-brand-500 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded";
   const sectionTitleClass = "text-xs font-medium text-gray-500 uppercase tracking-wider ml-3 mb-2";
 
   return (
@@ -150,7 +151,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
           <input
             aria-label={t('businessName')}
             placeholder={t('businessName')}
-            className="w-full text-[15px] font-medium bg-transparent outline-none placeholder:text-gray-300 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
+            className="w-full text-[15px] font-medium bg-transparent outline-none placeholder:text-gray-500 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
             value={data.senderName}
             onChange={(e) => updateField('senderName', e.target.value)}
           />
@@ -159,7 +160,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
           <input
             aria-label={t('email')}
             placeholder={t('email')}
-            className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-300 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
+            className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-500 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
             value={data.senderEmail}
             onChange={(e) => updateField('senderEmail', e.target.value)}
           />
@@ -169,7 +170,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
               aria-label={t('address')}
               placeholder={t('address')}
               rows={2}
-              className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-300 resize-none py-1 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
+              className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-500 resize-none py-1 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
               value={data.senderAddress}
               onChange={(e) => updateField('senderAddress', e.target.value)}
             />
@@ -178,14 +179,14 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
             <input
               aria-label={t('regNo')}
               placeholder={t('regNo')}
-              className="w-1/2 p-3.5 text-[13px] bg-transparent outline-none placeholder:text-gray-300 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
+              className="w-1/2 p-3.5 text-[13px] bg-transparent outline-none placeholder:text-gray-500 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
               value={data.senderRegNo || ''}
               onChange={(e) => updateField('senderRegNo', e.target.value)}
             />
              <input
               aria-label={t('sstNo')}
               placeholder={t('sstNo')}
-              className="w-1/2 p-3.5 text-[13px] bg-transparent outline-none placeholder:text-gray-300 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
+              className="w-1/2 p-3.5 text-[13px] bg-transparent outline-none placeholder:text-gray-500 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
               value={data.senderSstNo || ''}
               onChange={(e) => updateField('senderSstNo', e.target.value)}
             />
@@ -199,7 +200,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
           <input
             aria-label={t('clientName')}
             placeholder={t('clientName')}
-            className="w-full text-[15px] font-medium bg-transparent outline-none placeholder:text-gray-300 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
+            className="w-full text-[15px] font-medium bg-transparent outline-none placeholder:text-gray-500 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
             value={data.clientName}
             onChange={(e) => updateField('clientName', e.target.value)}
           />
@@ -208,7 +209,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
           <input
             aria-label={t('clientEmail')}
             placeholder={t('clientEmail')}
-            className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-300 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
+            className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-500 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
             value={data.clientEmail}
             onChange={(e) => updateField('clientEmail', e.target.value)}
           />
@@ -218,7 +219,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
               aria-label={t('clientAddress')}
               placeholder={t('clientAddress')}
               rows={2}
-              className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-300 resize-none py-1 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
+              className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-500 resize-none py-1 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
               value={data.clientAddress}
               onChange={(e) => updateField('clientAddress', e.target.value)}
             />
@@ -244,7 +245,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
                     aria-label={`${t('description')} ${idx + 1}`}
                     value={item.description}
                     onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                    className="w-full text-[15px] font-medium placeholder:text-gray-300 outline-none bg-transparent"
+                    className="w-full text-[15px] font-medium placeholder:text-gray-500 outline-none bg-transparent"
                   />
                   <div className="flex items-center gap-4">
                      <div className="flex items-center gap-2 bg-gray-50 dark:bg-white/5 rounded-lg px-2 py-1">
@@ -320,7 +321,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange }) 
                 rows={4}
                 value={data.notes}
                 onChange={(e) => updateField('notes', e.target.value)}
-                className="w-full p-3.5 text-[14px] leading-relaxed bg-transparent outline-none resize-none placeholder:text-gray-300"
+                className="w-full p-3.5 text-[14px] leading-relaxed bg-transparent outline-none resize-none placeholder:text-gray-500"
               />
           </div>
        </div>

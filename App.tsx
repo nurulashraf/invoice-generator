@@ -2,11 +2,28 @@ import React, { useState, useEffect, useRef } from 'react';
 import { InvoiceData, createDefaultInvoice } from './types';
 import { InvoiceEditor } from './components/InvoiceEditor';
 import { InvoicePreview } from './components/InvoicePreview';
-import { saveInvoiceToHistory, getStoredInvoices, deleteInvoiceFromHistory } from './services/storageService';
+import {
+  saveInvoiceToHistory,
+  getStoredInvoices,
+  deleteInvoiceFromHistory,
+  loadDraftRaw,
+  saveDraft,
+  getCounterRaw,
+  setCounter,
+  loadTheme,
+  saveTheme,
+} from './services/storageService';
 import { Printer, X, Plus, Globe, Moon, Sun, History, Trash2, LayoutTemplate, Command, Download } from 'lucide-react';
 import { useI18n } from './i18n';
 import { ToastContainer, ToastMessage } from './components/Toast';
 import html2pdf from 'html2pdf.js';
+import { subtotal as invoiceSubtotal } from './services/invoiceCalculations';
+import {
+  computeNextInvoiceNumber,
+  hydrateDraft,
+  hasMeaningfulContent,
+} from './services/invoiceDraft';
+import { useFocusTrap, mergeRefs } from './hooks/useFocusTrap';
 
 export default function App() {
   const { t, locale, setLocale } = useI18n();
@@ -31,23 +48,11 @@ export default function App() {
   };
 
   // Theme Management
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        return 'dark';
-      }
-    }
-    return 'light';
-  });
+  const [theme, setTheme] = useState<'light' | 'dark'>(loadTheme);
 
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    saveTheme(theme);
   }, [theme]);
 
   // Scroll effect & Resize Scale
@@ -81,50 +86,43 @@ export default function App() {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
+  // Reads + increments the persisted counter. Side-effecting, so only call
+  // from event handlers / effects — never from a render or state initializer.
   const getNextInvoiceNumber = () => {
-    if (typeof window === 'undefined') return 'INV-001';
-    const saved = localStorage.getItem('invoiceCounter');
-    let next = 1;
-    if (saved) {
-      const parsed = parseInt(saved, 10);
-      if (!isNaN(parsed)) {
-        next = parsed + 1;
-      }
-    }
-    localStorage.setItem('invoiceCounter', String(next));
-    return `INV-${String(next).padStart(3, '0')}`;
+    const { counter, invoiceNumber } = computeNextInvoiceNumber(getCounterRaw());
+    setCounter(counter);
+    return invoiceNumber;
   };
 
-  // Initialize state
-  const [invoice, setInvoice] = useState<InvoiceData>(() => {
-    if (typeof window !== 'undefined') {
-      const savedDraft = localStorage.getItem('invoiceDraft');
-      if (savedDraft) {
-        try {
-          const parsed = JSON.parse(savedDraft);
-          const defaultInv = createDefaultInvoice();
-          return { ...defaultInv, ...parsed, id: parsed.id || defaultInv.id };
-        } catch (e) {
-          console.error('Failed to parse invoice draft', e);
-        }
-      }
-    }
-    return {
-      ...createDefaultInvoice(),
-      invoiceNumber: getNextInvoiceNumber()
-    };
-  });
-  
+  // Initialize from a validated draft. Pure — no counter mutation here, so a
+  // StrictMode double-invoke of the initializer can't skip invoice numbers.
+  const [invoice, setInvoice] = useState<InvoiceData>(() =>
+    hydrateDraft(loadDraftRaw())
+  );
+
   const [showMobilePreview, setShowMobilePreview] = useState(false);
+
+  // Focus traps for the modal dialogs (initial focus + Tab cycling + restore).
+  const historyDialogRef = useFocusTrap<HTMLDivElement>(showHistory);
+  const previewDialogRef = useFocusTrap<HTMLDivElement>(showMobilePreview);
+
+  // On first mount with no saved draft, assign the next sequential number once.
+  // The ref guard keeps it to a single increment even if the effect re-runs.
+  const numberAssignedRef = useRef(false);
+  useEffect(() => {
+    if (numberAssignedRef.current) return;
+    numberAssignedRef.current = true;
+    if (!loadDraftRaw()) {
+      setInvoice(prev => ({ ...prev, invoiceNumber: getNextInvoiceNumber() }));
+    }
+  }, []);
 
   // Auto-save effect
   useEffect(() => {
-    try {
-      localStorage.setItem('invoiceDraft', JSON.stringify(invoice));
-    } catch (e) {
-      // Draft save failed — quota exceeded
-    }
+    saveDraft(invoice);
     const timeoutId = setTimeout(() => {
+      // Don't persist blank/just-created invoices to history.
+      if (!hasMeaningfulContent(invoice)) return;
       const { invoices, quotaExceeded } = saveInvoiceToHistory(invoice);
       setSavedInvoices(invoices);
       if (quotaExceeded) {
@@ -290,7 +288,7 @@ export default function App() {
       {showHistory && (
         <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-labelledby="history-title" onKeyDown={(e) => { if (e.key === 'Escape') setShowHistory(false); }}>
           <div className="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity" onClick={() => setShowHistory(false)} />
-          <div className="relative w-80 bg-[#F5F5F7]/95 dark:bg-[#1C1C1E]/95 backdrop-blur-2xl h-full shadow-2xl flex flex-col border-r border-gray-200 dark:border-white/10 animate-in slide-in-from-left duration-300 ease-out">
+          <div ref={historyDialogRef} tabIndex={-1} className="relative w-80 bg-[#F5F5F7]/95 dark:bg-[#1C1C1E]/95 backdrop-blur-2xl h-full shadow-2xl flex flex-col border-r border-gray-200 dark:border-white/10 animate-in slide-in-from-left duration-300 ease-out focus:outline-none">
             <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-white/10">
               <h2 id="history-title" className="text-lg font-semibold text-[#1D1D1F] dark:text-white">
                 {t('history')}
@@ -328,7 +326,7 @@ export default function App() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-bold text-[#1D1D1F] dark:text-white">
-                      {inv.items.reduce((acc, i) => acc + (i.quantity * i.rate), 0).toLocaleString(locale === 'ms' ? 'ms-MY' : 'en-MY', { style: 'currency', currency: inv.currency })}
+                      {invoiceSubtotal(inv.items).toLocaleString(locale === 'ms' ? 'ms-MY' : 'en-MY', { style: 'currency', currency: inv.currency })}
                     </span>
                     <button
                       onClick={(e) => deleteInvoice(e, inv.id)}
@@ -354,15 +352,16 @@ export default function App() {
             <InvoiceEditor
               data={invoice}
               onChange={setInvoice}
+              onNotify={addToast}
             />
           </div>
         </div>
 
         {/* Preview Column - Sticky Right Side */}
         <div
-          ref={previewContainerRef}
-          className={`lg:col-span-7 xl:col-span-8 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] ${showMobilePreview ? 'fixed inset-0 z-50 bg-[#F5F5F7] dark:bg-black p-4 overflow-y-auto' : 'hidden'} lg:block lg:overflow-y-auto flex flex-col no-scrollbar`}
-          {...(showMobilePreview ? { role: 'dialog', 'aria-modal': true, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Escape') setShowMobilePreview(false); } } : {})}
+          ref={mergeRefs(previewContainerRef, previewDialogRef)}
+          className={`lg:col-span-7 xl:col-span-8 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] ${showMobilePreview ? 'fixed inset-0 z-50 bg-[#F5F5F7] dark:bg-black p-4 overflow-y-auto' : 'hidden'} lg:block lg:overflow-y-auto flex flex-col no-scrollbar focus:outline-none`}
+          {...(showMobilePreview ? { role: 'dialog', 'aria-modal': true, tabIndex: -1, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Escape') setShowMobilePreview(false); } } : {})}
         >
           
           {showMobilePreview && (

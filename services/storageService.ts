@@ -1,11 +1,27 @@
 import { InvoiceData } from '../types';
 
-const STORAGE_KEY = 'invoiceHistory';
+// This module is the single owner of all localStorage access in the app.
+// Components and other services should go through these functions rather than
+// touching localStorage directly.
+const HISTORY_KEY = 'invoiceHistory';
+const DRAFT_KEY = 'invoiceDraft';
+const COUNTER_KEY = 'invoiceCounter';
+const THEME_KEY = 'theme';
+const LOCALE_KEY = 'locale';
+
+export type Theme = 'light' | 'dark';
+
+const hasStorage = (): boolean =>
+  typeof window !== 'undefined' && !!window.localStorage;
+
+// ---------------------------------------------------------------------------
+// Invoice history
+// ---------------------------------------------------------------------------
 
 export const getStoredInvoices = (): InvoiceData[] => {
-  if (typeof window === 'undefined') return [];
+  if (!hasStorage()) return [];
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(HISTORY_KEY);
     return stored ? JSON.parse(stored) : [];
   } catch (e) {
     console.error('Failed to load invoice history', e);
@@ -29,7 +45,7 @@ export const saveInvoiceToHistory = (invoice: InvoiceData): SaveResult => {
   }
 
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(invoices));
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(invoices));
     return { invoices, quotaExceeded: false };
   } catch (e) {
     console.error('Failed to save invoice history: storage quota exceeded', e);
@@ -40,9 +56,71 @@ export const saveInvoiceToHistory = (invoice: InvoiceData): SaveResult => {
 export const deleteInvoiceFromHistory = (id: string): InvoiceData[] => {
   const invoices = getStoredInvoices().filter(i => i.id !== id);
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(invoices));
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(invoices));
   } catch (e) {
     console.error('Failed to save invoice history after delete', e);
   }
   return invoices;
+};
+
+// ---------------------------------------------------------------------------
+// Working draft
+// ---------------------------------------------------------------------------
+
+/** Raw persisted draft string (validation happens in invoiceDraft.hydrateDraft). */
+export const loadDraftRaw = (): string | null =>
+  hasStorage() ? localStorage.getItem(DRAFT_KEY) : null;
+
+/** Persist the working draft. Returns false if the write failed (quota). */
+export const saveDraft = (invoice: InvoiceData): boolean => {
+  if (!hasStorage()) return true;
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(invoice));
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Invoice number counter
+// ---------------------------------------------------------------------------
+
+export const getCounterRaw = (): string | null =>
+  hasStorage() ? localStorage.getItem(COUNTER_KEY) : null;
+
+export const setCounter = (n: number): void => {
+  if (hasStorage()) localStorage.setItem(COUNTER_KEY, String(n));
+};
+
+// ---------------------------------------------------------------------------
+// Theme
+// ---------------------------------------------------------------------------
+
+/** Resolve the persisted theme, falling back to the OS preference, then light. */
+export const loadTheme = (): Theme => {
+  if (!hasStorage()) return 'light';
+  const stored = localStorage.getItem(THEME_KEY);
+  if (stored === 'dark' || stored === 'light') return stored;
+  if (typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark';
+  }
+  return 'light';
+};
+
+export const saveTheme = (theme: Theme): void => {
+  if (hasStorage()) localStorage.setItem(THEME_KEY, theme);
+};
+
+// ---------------------------------------------------------------------------
+// Locale
+// ---------------------------------------------------------------------------
+
+export const loadLocale = (): string | null =>
+  hasStorage() ? localStorage.getItem(LOCALE_KEY) : null;
+
+export const saveLocale = (locale: string): void => {
+  if (hasStorage()) localStorage.setItem(LOCALE_KEY, locale);
 };

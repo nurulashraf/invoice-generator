@@ -2,6 +2,7 @@ import React, { useMemo, useCallback } from 'react';
 import { InvoiceData } from '../types';
 import { useI18n } from '../i18n';
 import { Command } from 'lucide-react';
+import * as calc from '../services/invoiceCalculations';
 
 interface InvoicePreviewProps {
   data: InvoiceData;
@@ -10,12 +11,11 @@ interface InvoicePreviewProps {
 export const InvoicePreview: React.FC<InvoicePreviewProps> = React.memo(({ data }) => {
   const { t, locale } = useI18n();
 
-  const { subtotal, taxAmount, total } = useMemo(() => {
-    const subtotal = data.items.reduce((acc, item) => acc + (item.quantity * item.rate), 0);
-    const taxAmount = subtotal * (data.taxRate / 100);
-    const total = subtotal + taxAmount;
-    return { subtotal, taxAmount, total };
-  }, [data.items, data.taxRate]);
+  const { subtotal, taxAmount, total } = useMemo(() => ({
+    subtotal: calc.subtotal(data.items),
+    taxAmount: calc.taxAmount(data.items, data.taxRate),
+    total: calc.grandTotal(data.items, data.taxRate),
+  }), [data.items, data.taxRate]);
 
   const formatLocale = locale === 'ms' ? 'ms-MY' : 'en-MY';
 
@@ -39,35 +39,8 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = React.memo(({ data 
     ? t('taxInvoice') 
     : t('simpleInvoice');
 
-  // Pagination Logic
-  const MAX_ITEMS_FIRST_PAGE = 8;
-  const MAX_ITEMS_OTHER_PAGE = 15;
-  const itemPages: InvoiceData['items'][] = [];
-  let remainingItems = [...data.items];
-
-  // Render at least one page even if no items
-  if (remainingItems.length === 0) {
-    itemPages.push([]);
-  } else {
-    // Fill first page
-    if (remainingItems.length > MAX_ITEMS_FIRST_PAGE) {
-      itemPages.push(remainingItems.slice(0, MAX_ITEMS_FIRST_PAGE));
-      remainingItems = remainingItems.slice(MAX_ITEMS_FIRST_PAGE);
-    } else {
-      itemPages.push(remainingItems);
-      remainingItems = [];
-    }
-    // Fill subsequent pages
-    while (remainingItems.length > 0) {
-      if (remainingItems.length > MAX_ITEMS_OTHER_PAGE) {
-        itemPages.push(remainingItems.slice(0, MAX_ITEMS_OTHER_PAGE));
-        remainingItems = remainingItems.slice(MAX_ITEMS_OTHER_PAGE);
-      } else {
-        itemPages.push(remainingItems);
-        remainingItems = [];
-      }
-    }
-  }
+  // Pagination: up to 8 items on the first page, 15 on each subsequent page.
+  const itemPages = calc.paginateItems(data.items);
 
   // Calculate items offset for numbering
   let itemOffset = 0;
