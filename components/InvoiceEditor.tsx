@@ -1,8 +1,101 @@
 import React from 'react';
+import { Reorder, useDragControls } from 'framer-motion';
 import { InvoiceData, LineItem } from '../types';
-import { Plus, ChevronRight, Image as ImageIcon, MinusCircle } from 'lucide-react';
+import { Plus, ChevronRight, Image as ImageIcon, MinusCircle, GripVertical } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { SignaturePad } from './SignaturePad';
+
+interface LineItemRowProps {
+  item: LineItem;
+  index: number;
+  currency: string;
+  onUpdate: (id: string, field: keyof LineItem, value: string | number) => void;
+  onRemove: (id: string) => void;
+  onMove: (index: number, direction: -1 | 1) => void;
+}
+
+// A single draggable line-item row. Dragging is initiated only from the grip
+// handle (so the input fields stay fully editable), and the handle also moves
+// the item with ArrowUp / ArrowDown for keyboard accessibility.
+const LineItemRow: React.FC<LineItemRowProps> = ({ item, index, currency, onUpdate, onRemove, onMove }) => {
+  const { t, locale } = useI18n();
+  const formatLocale = locale === 'ms' ? 'ms-MY' : 'en-MY';
+  const dragControls = useDragControls();
+
+  return (
+    <Reorder.Item
+      value={item}
+      as="div"
+      dragListener={false}
+      dragControls={dragControls}
+      className="bg-white dark:bg-[#1C1C1E] rounded-xl overflow-hidden shadow-sm group"
+    >
+      <div className="flex items-start p-3 gap-2">
+        <button
+          type="button"
+          onPointerDown={(e) => dragControls.start(e)}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowUp') { e.preventDefault(); onMove(index, -1); }
+            else if (e.key === 'ArrowDown') { e.preventDefault(); onMove(index, 1); }
+          }}
+          aria-label={`Reorder item ${index + 1}. Use arrow keys to move up or down.`}
+          className="touch-none cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 dark:hover:text-gray-200 mt-0.5 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded"
+        >
+          <GripVertical className="w-5 h-5" />
+        </button>
+
+        <div className="flex-1 space-y-2">
+          <input
+            type="text"
+            placeholder={t('description')}
+            aria-label={`${t('description')} ${index + 1}`}
+            value={item.description}
+            onChange={(e) => onUpdate(item.id, 'description', e.target.value)}
+            className="w-full text-[15px] font-medium placeholder:text-gray-500 outline-none bg-transparent"
+          />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-gray-50 dark:bg-white/5 rounded-lg px-2 py-1">
+              <span className="text-[11px] text-gray-400 uppercase font-bold">Qty</span>
+              <input
+                type="number"
+                min="0"
+                aria-label={`Quantity for item ${index + 1}`}
+                value={item.quantity}
+                onChange={(e) => onUpdate(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                className="w-12 bg-transparent text-[13px] text-center font-medium outline-none"
+              />
+            </div>
+            <div className="text-gray-300">×</div>
+            <div className="flex items-center gap-2 bg-gray-50 dark:bg-white/5 rounded-lg px-2 py-1 flex-1">
+              <span className="text-[11px] text-gray-400 uppercase font-bold">{currency}</span>
+              <input
+                type="number"
+                min="0"
+                aria-label={`Rate for item ${index + 1}`}
+                value={item.rate}
+                onChange={(e) => onUpdate(item.id, 'rate', parseFloat(e.target.value) || 0)}
+                className="w-full bg-transparent text-[13px] font-medium outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-end gap-2">
+          <button
+            onClick={() => onRemove(item.id)}
+            aria-label={`Remove item ${index + 1}`}
+            className="text-gray-300 hover:text-red-500 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded-full"
+          >
+            <MinusCircle className="w-5 h-5" />
+          </button>
+          <div className="text-[13px] font-bold text-[#1D1D1F] dark:text-white mt-auto">
+            {(item.quantity * item.rate).toLocaleString(formatLocale, { minimumFractionDigits: 2 })}
+          </div>
+        </div>
+      </div>
+    </Reorder.Item>
+  );
+};
 
 interface InvoiceEditorProps {
   data: InvoiceData;
@@ -11,8 +104,7 @@ interface InvoiceEditorProps {
 }
 
 export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange, onNotify }) => {
-  const { t, locale } = useI18n();
-  const formatLocale = locale === 'ms' ? 'ms-MY' : 'en-MY';
+  const { t } = useI18n();
 
   const updateField = <K extends keyof InvoiceData>(field: K, value: InvoiceData[K]) => {
     onChange({ ...data, [field]: value });
@@ -37,6 +129,14 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange, on
 
   const removeItem = (id: string) => {
     onChange({ ...data, items: data.items.filter(item => item.id !== id) });
+  };
+
+  const moveItem = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= data.items.length) return;
+    const newItems = [...data.items];
+    [newItems[index], newItems[target]] = [newItems[target], newItems[index]];
+    onChange({ ...data, items: newItems });
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -234,67 +334,30 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange, on
          </button>
       </div>
 
-      <div className="space-y-3 mb-6">
+      <Reorder.Group
+        axis="y"
+        as="div"
+        values={data.items}
+        onReorder={(items) => onChange({ ...data, items })}
+        className="space-y-3 mb-6"
+      >
         {data.items.map((item, idx) => (
-          <div key={item.id} className="bg-white dark:bg-[#1C1C1E] rounded-xl overflow-hidden shadow-sm group">
-            <div className="flex items-start p-3 gap-3">
-               <div className="flex-1 space-y-2">
-                  <input
-                    type="text"
-                    placeholder={t('description')}
-                    aria-label={`${t('description')} ${idx + 1}`}
-                    value={item.description}
-                    onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                    className="w-full text-[15px] font-medium placeholder:text-gray-500 outline-none bg-transparent"
-                  />
-                  <div className="flex items-center gap-4">
-                     <div className="flex items-center gap-2 bg-gray-50 dark:bg-white/5 rounded-lg px-2 py-1">
-                        <span className="text-[11px] text-gray-400 uppercase font-bold">Qty</span>
-                        <input
-                          type="number"
-                          min="0"
-                          aria-label={`Quantity for item ${idx + 1}`}
-                          value={item.quantity}
-                          onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                          className="w-12 bg-transparent text-[13px] text-center font-medium outline-none"
-                        />
-                     </div>
-                     <div className="text-gray-300">×</div>
-                      <div className="flex items-center gap-2 bg-gray-50 dark:bg-white/5 rounded-lg px-2 py-1 flex-1">
-                        <span className="text-[11px] text-gray-400 uppercase font-bold">{data.currency}</span>
-                        <input
-                          type="number"
-                          min="0"
-                          aria-label={`Rate for item ${idx + 1}`}
-                          value={item.rate}
-                          onChange={(e) => updateItem(item.id, 'rate', parseFloat(e.target.value) || 0)}
-                          className="w-full bg-transparent text-[13px] font-medium outline-none"
-                        />
-                     </div>
-                  </div>
-               </div>
-
-               <div className="flex flex-col items-end gap-2">
-                 <button
-                  onClick={() => removeItem(item.id)}
-                  aria-label={`Remove item ${idx + 1}`}
-                  className="text-gray-300 hover:text-red-500 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded-full"
-                >
-                  <MinusCircle className="w-5 h-5" />
-                </button>
-                <div className="text-[13px] font-bold text-[#1D1D1F] dark:text-white mt-auto">
-                   {(item.quantity * item.rate).toLocaleString(formatLocale, { minimumFractionDigits: 2 })}
-                </div>
-               </div>
-            </div>
-          </div>
+          <LineItemRow
+            key={item.id}
+            item={item}
+            index={idx}
+            currency={data.currency}
+            onUpdate={updateItem}
+            onRemove={removeItem}
+            onMove={moveItem}
+          />
         ))}
         {data.items.length === 0 && (
            <div onClick={addItem} className="text-center p-8 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-xl cursor-pointer hover:border-brand-300 transition-colors">
               <span className="text-sm text-gray-400 font-medium">No items. Tap to add.</span>
            </div>
         )}
-      </div>
+      </Reorder.Group>
 
        {/* SECTION: FOOTER */}
        <h3 className={sectionTitleClass}>{t('settingsNotes')}</h3>
