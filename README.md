@@ -5,7 +5,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue?style=flat-square&logo=typescript)
 ![Tailwind](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=flat-square&logo=tailwindcss)
 
-A beautifully crafted desktop invoice generator with an Apple-inspired interface, pixel-perfect PDF export, and zero cloud dependencies. Your data never leaves your machine.
+A beautifully crafted desktop invoice generator with an Apple-inspired interface, selectable-text PDF export that matches the on-screen layout, and zero cloud dependencies. Your data never leaves your machine.
 
 > **[Download the latest release](../../releases/latest)** — grab the portable `.exe` and start invoicing in seconds. No installation required.
 
@@ -20,21 +20,26 @@ A beautifully crafted desktop invoice generator with an Apple-inspired interface
 - **Private:** All data stays on your machine in local storage. Nothing is sent anywhere.
 
 ### Professional PDF Engine
-- **High-Fidelity Export:** Generates crisp, print-ready A4 PDFs directly on your desktop.
-- **Smart Pagination:** Intelligent layout rules prevent rows from splitting across pages.
-- **One-Click Download:** Export your invoice as a PDF with a single click.
+- **Selectable, searchable text:** The desktop export renders the real invoice (not a screenshot), so the PDF text can be selected, copied, and searched.
+- **True A4 pagination:** Content flows onto genuine page 2/3 sheets when it overflows, with the footer anchored to the bottom of the page — what you see in the preview is what you get.
+- **Native Save dialog:** Choose where to save; success is only confirmed once the file is written.
 
 ### Premium Interface
 - **Glassmorphism Design:** Modern, translucent UI elements with background blur effects.
 - **Dark Mode:** System-aware dark mode with smooth transitions.
-- **Responsive Preview:** Live invoice preview with accurate A4 scaling.
+- **Responsive Preview:** Live, A4-accurate invoice preview that paginates exactly like the export.
+- **Accessible:** WCAG-minded contrast, persistent field labels, keyboard-navigable controls (including reorderable line items), and focus-trapped dialogs.
 - **Smooth Animations:** Polished transitions powered by Framer Motion.
 
 ### Productivity
-- **Invoice History:** Saves and manages all your invoices locally with auto-save.
+- **Invoice History:** Saves and manages all your invoices locally with auto-save and a "Saved" indicator.
+- **Duplicate Invoice:** Clone any past invoice (new number and date, same client and items) in one click.
+- **Saved Clients:** Save client details once and autofill them on future invoices.
+- **Discounts:** Apply a percentage or fixed-amount discount; tax is calculated on the discounted total.
+- **Email Invoice:** Open a pre-filled email to the client in your default mail app.
 - **Digital Signature:** Draw signatures directly on screen with the built-in signature pad.
 - **Multi-Language:** Supports English and Malay (Bahasa Melayu).
-- **Smart Defaults:** Pre-configured for Malaysian businesses (MYR, 6% SST), easily customizable.
+- **Malaysia-ready:** SST tax-invoice fields (Reg./IC no., SST no.); the document title switches to **TAX INVOICE** automatically when an SST number is present. Defaults to MYR and 6% SST, easily customizable.
 
 ---
 
@@ -84,8 +89,8 @@ npm run electron:build
 | **Desktop Shell** | Electron 42 |
 | **Framework** | React 19 |
 | **Language** | TypeScript (strict) |
-| **Styling** | Tailwind CSS 3 (PostCSS) |
-| **PDF Engine** | html2pdf.js |
+| **Styling** | Tailwind CSS 3 (PostCSS), semantic color tokens |
+| **PDF Engine** | Electron `webContents.printToPDF` (vector, selectable text); `window.print()` fallback on the web |
 | **Icons** | Lucide React |
 | **Animations** | Framer Motion |
 | **Build** | Vite 6 + electron-builder |
@@ -97,11 +102,12 @@ npm run electron:build
 
 ## Testing & Quality
 
-Core logic — invoice calculations, pagination, draft validation, invoice
-numbering, and local storage — is covered by a [Vitest](https://vitest.dev)
-suite under `services/`. Continuous integration runs type-checking, linting, and
-the test suite on every release tag before the portable `.exe` is built, so a
-broken build never ships.
+Core logic — invoice calculations (including discount-before-tax), A4 page
+pagination, draft validation and back-compat, invoice numbering, and local
+storage — is covered by a [Vitest](https://vitest.dev) suite under `services/`.
+Continuous integration runs type-checking, linting, and the test suite on every
+push and pull request (`ci.yml`), and again on every release tag before the
+portable `.exe` is built (`release.yml`), so a broken build never ships.
 
 ```bash
 npm run test:run    # run all tests once

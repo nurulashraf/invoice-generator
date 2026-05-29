@@ -23,6 +23,21 @@ html {
   scrollbar-width: none;
 }
 
+/* Hidden print/export window: suppress the window scrollbar so it is not
+   painted into the captured PDF. Content still paginates normally. */
+html.print-route,
+html.print-route body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overflow: visible;
+}
+html.print-route ::-webkit-scrollbar,
+html.print-route::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 .glass-panel {
   background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(20px);
@@ -48,6 +63,56 @@ html {
     max-width: 100% !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+  /* Let the live preview column flow full-size when exporting to PDF:
+     drop the sticky positioning, fixed height, overflow clipping and the
+     on-screen scale transform so the whole multi-page invoice renders. */
+  .preview-print-region {
+    position: static !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+  .preview-print-scale {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+  /* Collapse the dashboard grid so the (hidden) editor column leaves no gap
+     and the invoice flows from the top of the page. */
+  .app-print-main {
+    display: block !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+  .preview-print-flow {
+    overflow: visible !important;
+    height: auto !important;
+    padding-bottom: 0 !important;
+    display: block !important;
+  }
+  /* The on-screen pages use a fixed 29.7cm min-height + overflow-hidden, which
+     clips the footer once padding is included and adds an overflow scrollbar.
+     For the real (print-media) PDF, let each page size to its content. JS
+     pagination already caps items per page, so nothing overflows an A4. */
+  #invoice-preview {
+    gap: 0 !important;
+    padding-bottom: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+  .print-page {
+    overflow: visible !important;
+    min-height: 0 !important;
+    box-shadow: none !important;
+  }
+  /* The page body is h-full + flex with auto margins, which pins the footer to
+     a fixed-height bottom that then clips. Let it size to content in print. */
+  .print-page-body {
+    height: auto !important;
   }
 }
 

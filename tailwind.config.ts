@@ -13,6 +13,10 @@ export default {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
       },
       colors: {
+        // Semantic surface/text tokens (replace repeated arbitrary hex values).
+        surface: '#1C1C1E', // elevated card surface in dark mode
+        ink: '#1D1D1F',     // primary text / near-black
+        canvas: '#F5F5F7',  // app background (light)
         ios: {
           bg: '#F5F5F7',
           card: '#FFFFFF',

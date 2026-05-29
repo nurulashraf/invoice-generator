@@ -1,9 +1,11 @@
 import React from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
-import { InvoiceData, LineItem } from '../types';
-import { Plus, ChevronRight, Image as ImageIcon, MinusCircle, GripVertical } from 'lucide-react';
+import { InvoiceData, LineItem, DiscountType, SavedClient } from '../types';
+import { Plus, ChevronDown, Image as ImageIcon, MinusCircle, GripVertical, AlertTriangle } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { SignaturePad } from './SignaturePad';
+import { getStoredClients, saveClient } from '../services/storageService';
+import { FIELD_LIMITS } from '../services/fieldLimits';
 
 interface LineItemRowProps {
   item: LineItem;
@@ -22,13 +24,20 @@ const LineItemRow: React.FC<LineItemRowProps> = ({ item, index, currency, onUpda
   const formatLocale = locale === 'ms' ? 'ms-MY' : 'en-MY';
   const dragControls = useDragControls();
 
+  // Local text buffers so a field can be cleared (shown empty) while editing
+  // instead of snapping back to 0. The row is keyed by item.id, so it remounts
+  // — and re-initialises these — when a different invoice is loaded.
+  const [qtyText, setQtyText] = React.useState(() => String(item.quantity));
+  const [rateText, setRateText] = React.useState(() => String(item.rate));
+  const toNumber = (v: string) => (v === '' ? 0 : parseFloat(v) || 0);
+
   return (
     <Reorder.Item
       value={item}
       as="div"
       dragListener={false}
       dragControls={dragControls}
-      className="bg-white dark:bg-[#1C1C1E] rounded-xl overflow-hidden shadow-sm group"
+      className="bg-white dark:bg-surface rounded-xl overflow-hidden shadow-sm group"
     >
       <div className="flex items-start p-3 gap-2">
         <button
@@ -39,7 +48,7 @@ const LineItemRow: React.FC<LineItemRowProps> = ({ item, index, currency, onUpda
             else if (e.key === 'ArrowDown') { e.preventDefault(); onMove(index, 1); }
           }}
           aria-label={`Reorder item ${index + 1}. Use arrow keys to move up or down.`}
-          className="touch-none cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 dark:hover:text-gray-200 mt-0.5 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded"
+          className="touch-none cursor-grab active:cursor-grabbing text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mt-0.5 p-1 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded"
         >
           <GripVertical className="w-5 h-5" />
         </button>
@@ -49,31 +58,32 @@ const LineItemRow: React.FC<LineItemRowProps> = ({ item, index, currency, onUpda
             type="text"
             placeholder={t('description')}
             aria-label={`${t('description')} ${index + 1}`}
+            maxLength={FIELD_LIMITS.description}
             value={item.description}
             onChange={(e) => onUpdate(item.id, 'description', e.target.value)}
             className="w-full text-[15px] font-medium placeholder:text-gray-500 outline-none bg-transparent"
           />
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 bg-gray-50 dark:bg-white/5 rounded-lg px-2 py-1">
-              <span className="text-[11px] text-gray-400 uppercase font-bold">Qty</span>
+              <span className="text-[11px] text-gray-500 uppercase font-bold">Qty</span>
               <input
                 type="number"
                 min="0"
                 aria-label={`Quantity for item ${index + 1}`}
-                value={item.quantity}
-                onChange={(e) => onUpdate(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                value={qtyText}
+                onChange={(e) => { setQtyText(e.target.value); onUpdate(item.id, 'quantity', toNumber(e.target.value)); }}
                 className="w-12 bg-transparent text-[13px] text-center font-medium outline-none"
               />
             </div>
-            <div className="text-gray-300">×</div>
+            <div className="text-gray-400" aria-hidden="true">×</div>
             <div className="flex items-center gap-2 bg-gray-50 dark:bg-white/5 rounded-lg px-2 py-1 flex-1">
-              <span className="text-[11px] text-gray-400 uppercase font-bold">{currency}</span>
+              <span className="text-[11px] text-gray-500 uppercase font-bold">{currency}</span>
               <input
                 type="number"
                 min="0"
                 aria-label={`Rate for item ${index + 1}`}
-                value={item.rate}
-                onChange={(e) => onUpdate(item.id, 'rate', parseFloat(e.target.value) || 0)}
+                value={rateText}
+                onChange={(e) => { setRateText(e.target.value); onUpdate(item.id, 'rate', toNumber(e.target.value)); }}
                 className="w-full bg-transparent text-[13px] font-medium outline-none"
               />
             </div>
@@ -84,11 +94,11 @@ const LineItemRow: React.FC<LineItemRowProps> = ({ item, index, currency, onUpda
           <button
             onClick={() => onRemove(item.id)}
             aria-label={`Remove item ${index + 1}`}
-            className="text-gray-300 hover:text-red-500 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded-full"
+            className="text-gray-500 hover:text-red-600 dark:text-gray-400 transition-colors p-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded-full"
           >
             <MinusCircle className="w-5 h-5" />
           </button>
-          <div className="text-[13px] font-bold text-[#1D1D1F] dark:text-white mt-auto">
+          <div className="text-[13px] font-bold text-ink dark:text-white mt-auto">
             {(item.quantity * item.rate).toLocaleString(formatLocale, { minimumFractionDigits: 2 })}
           </div>
         </div>
@@ -105,6 +115,55 @@ interface InvoiceEditorProps {
 
 export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange, onNotify }) => {
   const { t } = useI18n();
+
+  // Only treat the due date as "overdue" when it is genuinely in the past;
+  // otherwise it should read as neutral text, not an error state.
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isOverdue = !!data.dueDate && data.dueDate < todayStr;
+
+  // Text buffer for the tax field so it can be cleared while editing. A ref
+  // tracks the value we last pushed up, so we only resync the buffer on a
+  // genuine external change (invoice loaded/reset), never on our own edits.
+  const [taxText, setTaxText] = React.useState(() => String(data.taxRate));
+  const lastTaxRef = React.useRef(data.taxRate);
+  React.useEffect(() => {
+    if (data.taxRate !== lastTaxRef.current) {
+      lastTaxRef.current = data.taxRate;
+      setTaxText(String(data.taxRate));
+    }
+  }, [data.taxRate]);
+
+  // Discount: same clearable-buffer pattern as tax.
+  const discountType: DiscountType = data.discountType ?? 'percent';
+  const [discountText, setDiscountText] = React.useState(() => String(data.discountValue ?? 0));
+  const lastDiscountRef = React.useRef(data.discountValue ?? 0);
+  React.useEffect(() => {
+    const v = data.discountValue ?? 0;
+    if (v !== lastDiscountRef.current) {
+      lastDiscountRef.current = v;
+      setDiscountText(String(v));
+    }
+  }, [data.discountValue]);
+
+  // Saved clients for autofill.
+  const [clients, setClients] = React.useState<SavedClient[]>(() => getStoredClients());
+
+  const handleSaveClient = () => {
+    const name = data.clientName.trim();
+    if (!name) {
+      onNotify?.(t('clientNameRequired'), 'error');
+      return;
+    }
+    const existing = clients.find((c) => c.name.toLowerCase() === name.toLowerCase());
+    const client: SavedClient = {
+      id: existing?.id || crypto.randomUUID(),
+      name,
+      email: data.clientEmail,
+      address: data.clientAddress,
+    };
+    setClients(saveClient(client));
+    onNotify?.(t('clientSaved'), 'success');
+  };
 
   const updateField = <K extends keyof InvoiceData>(field: K, value: InvoiceData[K]) => {
     onChange({ ...data, [field]: value });
@@ -154,11 +213,15 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange, on
   };
 
   // iOS-style Grouped List Classes
-  const groupClass = "bg-white dark:bg-[#1C1C1E] rounded-xl overflow-hidden shadow-sm mb-6";
+  const groupClass = "bg-white dark:bg-surface rounded-xl overflow-hidden shadow-sm mb-6";
   const rowClass = "relative flex items-center justify-between p-3.5 border-b border-gray-100 dark:border-white/5 last:border-0";
-  const labelClass = "text-[15px] text-[#1D1D1F] dark:text-white font-medium min-w-[100px]";
+  const labelClass = "text-[15px] text-ink dark:text-white font-medium min-w-[100px]";
   const inputClass = "flex-1 text-right bg-transparent text-[15px] text-gray-600 dark:text-gray-300 placeholder:text-gray-500 outline-none transition-colors focus:text-brand-500 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded";
   const sectionTitleClass = "text-xs font-medium text-gray-500 uppercase tracking-wider ml-3 mb-2";
+  // Stacked field with a persistent visible label (replaces placeholder-only labels).
+  const fieldRowClass = "px-3.5 py-2.5 border-b border-gray-100 dark:border-white/5 last:border-0";
+  const fieldLabelClass = "block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-0.5";
+  const fieldInputClass = "w-full bg-transparent text-[15px] text-ink dark:text-white placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded";
 
   return (
     <div className="pb-32 md:pb-0 font-sans">
@@ -171,6 +234,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange, on
           <input
             id="invoice-number"
             type="text"
+            maxLength={FIELD_LIMITS.invoiceNumber}
             value={data.invoiceNumber}
             onChange={(e) => updateField('invoiceNumber', e.target.value)}
             className={`${inputClass} font-semibold`}
@@ -187,13 +251,21 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange, on
           />
         </div>
         <div className={rowClass}>
-          <label htmlFor="due-date" className={labelClass}>{t('dueDate')}</label>
+          <label htmlFor="due-date" className={`${labelClass} flex items-center gap-1.5`}>
+            {t('dueDate')}
+            {isOverdue && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-600">
+                <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
+                {t('overdue')}
+              </span>
+            )}
+          </label>
           <input
             id="due-date"
             type="date"
             value={data.dueDate}
             onChange={(e) => updateField('dueDate', e.target.value)}
-            className={`${inputClass} appearance-none text-red-500`}
+            className={`${inputClass} appearance-none ${isOverdue ? 'text-red-600' : ''}`}
           />
         </div>
         <div className={rowClass}>
@@ -211,7 +283,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange, on
             <option value="EUR">EUR (€)</option>
             <option value="GBP">GBP (£)</option>
           </select>
-          <ChevronRight className="w-4 h-4 text-gray-300 absolute right-2 pointer-events-none" />
+          <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 pointer-events-none" />
         </div>
       </div>
 
@@ -228,11 +300,11 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange, on
                     <ImageIcon className="w-4 h-4" />
                   </div>
                 )}
-                <span className="text-[15px] text-brand-500">Edit</span>
+                <span className="text-[15px] text-brand-500">{data.logo ? 'Edit' : 'Add'}</span>
                 <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" aria-label="Upload logo" />
              </label>
           </div>
-          <div className="p-4 bg-white dark:bg-[#1C1C1E]">
+          <div className="p-4 bg-white dark:bg-surface">
              <div className="flex justify-between items-center mb-2">
                 <span className={labelClass}>{t('signature')}</span>
              </div>
@@ -245,91 +317,129 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange, on
       <div className={groupClass}>
         {/* Sender Header */}
         <div className="bg-gray-50/50 dark:bg-white/5 px-4 py-2 border-b border-gray-100 dark:border-white/5">
-           <span className="text-xs font-semibold text-gray-400 uppercase">{t('fromSender')}</span>
+           <span className="text-xs font-semibold text-gray-500 uppercase">{t('fromSender')}</span>
         </div>
-        <div className={rowClass}>
+        <div className={fieldRowClass}>
+          <label htmlFor="sender-name" className={fieldLabelClass}>{t('businessName')}</label>
           <input
-            aria-label={t('businessName')}
-            placeholder={t('businessName')}
-            className="w-full text-[15px] font-medium bg-transparent outline-none placeholder:text-gray-500 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
+            id="sender-name"
+            maxLength={FIELD_LIMITS.name}
+            className={`${fieldInputClass} font-medium`}
             value={data.senderName}
             onChange={(e) => updateField('senderName', e.target.value)}
           />
         </div>
-        <div className={rowClass}>
+        <div className={fieldRowClass}>
+          <label htmlFor="sender-email" className={fieldLabelClass}>{t('email')}</label>
           <input
-            aria-label={t('email')}
-            placeholder={t('email')}
-            className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-500 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
+            id="sender-email"
+            type="email"
+            maxLength={FIELD_LIMITS.email}
+            className={fieldInputClass}
             value={data.senderEmail}
             onChange={(e) => updateField('senderEmail', e.target.value)}
           />
         </div>
-         <div className={rowClass}>
-            <textarea
-              aria-label={t('address')}
-              placeholder={t('address')}
-              rows={2}
-              className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-500 resize-none py-1 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
-              value={data.senderAddress}
-              onChange={(e) => updateField('senderAddress', e.target.value)}
-            />
+        <div className={fieldRowClass}>
+          <label htmlFor="sender-address" className={fieldLabelClass}>{t('address')}</label>
+          <textarea
+            id="sender-address"
+            rows={2}
+            maxLength={FIELD_LIMITS.address}
+            className={`${fieldInputClass} resize-none`}
+            value={data.senderAddress}
+            onChange={(e) => updateField('senderAddress', e.target.value)}
+          />
         </div>
         <div className="flex divide-x divide-gray-100 dark:divide-white/5">
+          <div className="w-1/2 px-3.5 py-2.5">
+            <label htmlFor="sender-regno" className={fieldLabelClass}>{t('regNo')}</label>
             <input
-              aria-label={t('regNo')}
-              placeholder={t('regNo')}
-              className="w-1/2 p-3.5 text-[13px] bg-transparent outline-none placeholder:text-gray-500 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
+              id="sender-regno"
+              maxLength={FIELD_LIMITS.idNo}
+              className={`${fieldInputClass} text-[13px]`}
               value={data.senderRegNo || ''}
               onChange={(e) => updateField('senderRegNo', e.target.value)}
             />
-             <input
-              aria-label={t('sstNo')}
-              placeholder={t('sstNo')}
-              className="w-1/2 p-3.5 text-[13px] bg-transparent outline-none placeholder:text-gray-500 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
+          </div>
+          <div className="w-1/2 px-3.5 py-2.5">
+            <label htmlFor="sender-sstno" className={fieldLabelClass}>{t('sstNo')} ({t('optional')})</label>
+            <input
+              id="sender-sstno"
+              maxLength={FIELD_LIMITS.idNo}
+              className={`${fieldInputClass} text-[13px]`}
               value={data.senderSstNo || ''}
               onChange={(e) => updateField('senderSstNo', e.target.value)}
             />
+          </div>
+        </div>
+        <div className="px-3.5 pt-1 pb-2.5 border-b border-gray-100 dark:border-white/5">
+          <p className="text-[11px] text-gray-500 leading-snug">{t('sstHint')}</p>
         </div>
 
         {/* Client Header */}
-         <div className="bg-gray-50/50 dark:bg-white/5 px-4 py-2 border-y border-gray-100 dark:border-white/5">
-           <span className="text-xs font-semibold text-gray-400 uppercase">{t('toClient')}</span>
+         <div className="bg-gray-50/50 dark:bg-white/5 px-4 py-2 border-y border-gray-100 dark:border-white/5 flex items-center justify-between">
+           <span className="text-xs font-semibold text-gray-500 uppercase">{t('toClient')}</span>
+           <button
+             type="button"
+             onClick={handleSaveClient}
+             className="text-[11px] font-semibold text-brand-500 hover:text-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 rounded px-1"
+           >
+             {t('saveClient')}
+           </button>
         </div>
-        <div className={rowClass}>
+        <div className={fieldRowClass}>
+          <label htmlFor="client-name" className={fieldLabelClass}>{t('clientName')}</label>
           <input
-            aria-label={t('clientName')}
-            placeholder={t('clientName')}
-            className="w-full text-[15px] font-medium bg-transparent outline-none placeholder:text-gray-500 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
+            id="client-name"
+            list="clients-datalist"
+            maxLength={FIELD_LIMITS.name}
+            className={`${fieldInputClass} font-medium`}
             value={data.clientName}
-            onChange={(e) => updateField('clientName', e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              const match = clients.find((c) => c.name === val);
+              if (match) {
+                onChange({ ...data, clientName: match.name, clientEmail: match.email, clientAddress: match.address });
+              } else {
+                updateField('clientName', val);
+              }
+            }}
           />
+          <datalist id="clients-datalist">
+            {clients.map((c) => (
+              <option key={c.id} value={c.name} />
+            ))}
+          </datalist>
         </div>
-         <div className={rowClass}>
+        <div className={fieldRowClass}>
+          <label htmlFor="client-email" className={fieldLabelClass}>{t('clientEmail')}</label>
           <input
-            aria-label={t('clientEmail')}
-            placeholder={t('clientEmail')}
-            className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-500 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
+            id="client-email"
+            type="email"
+            maxLength={FIELD_LIMITS.email}
+            className={fieldInputClass}
             value={data.clientEmail}
             onChange={(e) => updateField('clientEmail', e.target.value)}
           />
         </div>
-         <div className={rowClass}>
-             <textarea
-              aria-label={t('clientAddress')}
-              placeholder={t('clientAddress')}
-              rows={2}
-              className="w-full text-[15px] bg-transparent outline-none placeholder:text-gray-500 resize-none py-1 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
-              value={data.clientAddress}
-              onChange={(e) => updateField('clientAddress', e.target.value)}
-            />
+        <div className={fieldRowClass}>
+          <label htmlFor="client-address" className={fieldLabelClass}>{t('clientAddress')}</label>
+          <textarea
+            id="client-address"
+            rows={2}
+            maxLength={FIELD_LIMITS.address}
+            className={`${fieldInputClass} resize-none`}
+            value={data.clientAddress}
+            onChange={(e) => updateField('clientAddress', e.target.value)}
+          />
         </div>
       </div>
 
       {/* SECTION: ITEMS */}
       <div className="flex items-center justify-between mb-2 ml-3 mr-1">
          <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t('lineItems')}</h3>
-         <button onClick={addItem} aria-label={t('addItem') || 'Add item'} className="text-brand-500 hover:text-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 rounded-full">
+         <button onClick={addItem} aria-label={t('addItem') || 'Add item'} className="text-brand-500 hover:text-brand-600 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded-full">
             <Plus className="w-5 h-5" />
          </button>
       </div>
@@ -354,7 +464,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange, on
         ))}
         {data.items.length === 0 && (
            <div onClick={addItem} className="text-center p-8 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-xl cursor-pointer hover:border-brand-300 transition-colors">
-              <span className="text-sm text-gray-400 font-medium">No items. Tap to add.</span>
+              <span className="text-sm text-gray-500 font-medium">Click to add an item.</span>
            </div>
         )}
       </Reorder.Group>
@@ -364,24 +474,60 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ data, onChange, on
        <div className={groupClass}>
           <div className={rowClass}>
             <label htmlFor="tax-rate" className={labelClass}>{t('taxSst')} (%)</label>
+            {/* taxSst no longer carries its own "(%)"; appended once here */}
             <input
               id="tax-rate"
               type="number"
               min="0"
               max="100"
-              value={data.taxRate}
-              onChange={(e) => updateField('taxRate', parseFloat(e.target.value) || 0)}
+              value={taxText}
+              onChange={(e) => {
+                const v = e.target.value;
+                setTaxText(v);
+                const n = v === '' ? 0 : parseFloat(v) || 0;
+                lastTaxRef.current = n;
+                updateField('taxRate', n);
+              }}
               className={inputClass}
             />
           </div>
+          <div className={rowClass}>
+            <label htmlFor="discount" className={labelClass}>{t('discount')}</label>
+            <div className="flex items-center gap-2">
+              <select
+                aria-label={`${t('discount')} type`}
+                value={discountType}
+                onChange={(e) => updateField('discountType', e.target.value as DiscountType)}
+                className="bg-gray-50 dark:bg-white/5 rounded-lg text-[13px] px-2 py-1 outline-none cursor-pointer focus:ring-2 focus:ring-brand-500"
+              >
+                <option value="percent">%</option>
+                <option value="fixed">{data.currency}</option>
+              </select>
+              <input
+                id="discount"
+                type="number"
+                min="0"
+                value={discountText}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setDiscountText(v);
+                  const n = v === '' ? 0 : parseFloat(v) || 0;
+                  lastDiscountRef.current = n;
+                  updateField('discountValue', n);
+                }}
+                className="w-20 text-right bg-transparent text-[15px] text-gray-600 dark:text-gray-300 outline-none focus:text-brand-500 focus:ring-2 focus:ring-brand-500 focus:ring-inset rounded"
+              />
+            </div>
+          </div>
           <div className="p-0">
              <div className="px-3.5 py-2 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5">
-                <span className="text-xs font-semibold text-gray-400 uppercase">{t('termsNotes')}</span>
+                <span className="text-xs font-semibold text-gray-500 uppercase">{t('termsNotes')}</span>
              </div>
              <textarea
                 id="notes"
                 aria-label={t('termsNotes')}
                 rows={4}
+                maxLength={FIELD_LIMITS.notes}
                 value={data.notes}
                 onChange={(e) => updateField('notes', e.target.value)}
                 className="w-full p-3.5 text-[14px] leading-relaxed bg-transparent outline-none resize-none placeholder:text-gray-500"

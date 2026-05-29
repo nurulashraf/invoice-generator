@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   lineItemTotal,
   subtotal,
+  discountAmount,
+  taxableBase,
   taxAmount,
   grandTotal,
   paginateItems,
@@ -43,6 +45,41 @@ describe('invoice calculations', () => {
 
   it('treats a zero tax rate as subtotal-only', () => {
     expect(grandTotal([item(2, 50)], 0)).toBe(100);
+  });
+});
+
+describe('discounts', () => {
+  it('applies a percent discount to the subtotal', () => {
+    expect(discountAmount([item(1, 200)], 'percent', 10)).toBeCloseTo(20);
+  });
+
+  it('applies a fixed discount, capped at the subtotal', () => {
+    expect(discountAmount([item(1, 200)], 'fixed', 50)).toBe(50);
+    expect(discountAmount([item(1, 200)], 'fixed', 500)).toBe(200);
+  });
+
+  it('returns zero discount for non-positive values', () => {
+    expect(discountAmount([item(1, 200)], 'percent', 0)).toBe(0);
+    expect(discountAmount([item(1, 200)], 'percent', -5)).toBe(0);
+  });
+
+  it('applies tax to the discounted base, not the raw subtotal', () => {
+    // subtotal 200, 10% discount => base 180, 6% tax => 10.8
+    expect(taxAmount([item(1, 200)], 6, 'percent', 10)).toBeCloseTo(10.8);
+  });
+
+  it('computes grand total as (subtotal - discount) + tax', () => {
+    // base 180 + tax 10.8 => 190.8
+    expect(grandTotal([item(1, 200)], 6, 'percent', 10)).toBeCloseTo(190.8);
+  });
+
+  it('never lets an oversized fixed discount push the base or total negative', () => {
+    expect(taxableBase([item(1, 100)], 'fixed', 999)).toBe(0);
+    expect(grandTotal([item(1, 100)], 6, 'fixed', 999)).toBe(0);
+  });
+
+  it('defaults to no discount (back-compatible with 2-arg calls)', () => {
+    expect(grandTotal([item(1, 100)], 6)).toBeCloseTo(106);
   });
 });
 

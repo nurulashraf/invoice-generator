@@ -13,11 +13,11 @@ import {
   loadTheme,
   saveTheme,
 } from './services/storageService';
-import { Printer, X, Plus, Globe, Moon, Sun, History, Trash2, LayoutTemplate, Command, Download } from 'lucide-react';
+import { Printer, X, Plus, Globe, Moon, Sun, History, Trash2, LayoutTemplate, Command, Download, Copy, Mail } from 'lucide-react';
 import { useI18n } from './i18n';
 import { ToastContainer, ToastMessage } from './components/Toast';
-import html2pdf from 'html2pdf.js';
-import { subtotal as invoiceSubtotal } from './services/invoiceCalculations';
+import { ConfirmDialog } from './components/ConfirmDialog';
+import { subtotal as invoiceSubtotal, grandTotal } from './services/invoiceCalculations';
 import {
   computeNextInvoiceNumber,
   hydrateDraft,
@@ -31,6 +31,15 @@ export default function App() {
   const [savedInvoices, setSavedInvoices] = useState<InvoiceData[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    destructive?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
   
   // Preview Scaling Logic
   const previewContainerRef = useRef<HTMLDivElement>(null);
@@ -72,8 +81,19 @@ export default function App() {
     handleResize();
     setTimeout(handleResize, 100);
 
+    // Also recompute when the preview container itself changes size — e.g. the
+    // history sidebar opening/closing or other layout shifts that `resize`
+    // doesn't fire for. (Scale uses a CSS transform, which doesn't alter the
+    // container's measured width, so this can't feed back into a loop.)
+    let observer: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== 'undefined' && previewContainerRef.current) {
+      observer = new ResizeObserver(() => handleResize());
+      observer.observe(previewContainerRef.current);
+    }
+
     return () => {
       window.removeEventListener('resize', handleResize);
+      observer?.disconnect();
     };
   }, []);
 
@@ -120,57 +140,92 @@ export default function App() {
   // Auto-save effect
   useEffect(() => {
     saveDraft(invoice);
+    setIsSaving(true);
     const timeoutId = setTimeout(() => {
-      // Don't persist blank/just-created invoices to history.
-      if (!hasMeaningfulContent(invoice)) return;
-      const { invoices, quotaExceeded } = saveInvoiceToHistory(invoice);
-      setSavedInvoices(invoices);
-      if (quotaExceeded) {
-        addToast(t('storageFull') || 'Storage full. Consider deleting old invoices.', 'error');
+      // Don't persist blank/just-created invoices to history, but still
+      // reflect that the draft itself has been saved.
+      if (hasMeaningfulContent(invoice)) {
+        const { invoices, quotaExceeded } = saveInvoiceToHistory(invoice);
+        setSavedInvoices(invoices);
+        if (quotaExceeded) {
+          addToast(t('storageFull') || 'Storage full. Consider deleting old invoices.', 'error');
+        }
       }
+      setIsSaving(false);
+      setSavedAt(new Date());
     }, 1000);
     return () => clearTimeout(timeoutId);
   }, [invoice]);
 
   const handleExportPDF = async () => {
     setIsExporting(true);
-    addToast(t('generatingPdf'), 'info');
-
-    const element = document.getElementById('invoice-preview');
-    const scaledParent = element?.parentElement as HTMLElement | null;
-    const originalTransform = scaledParent?.style.transform || '';
-
     try {
-      if (!element) throw new Error('Preview not found');
-
-      // Temporarily reset parent scale transform for accurate capture
-      if (scaledParent) scaledParent.style.transform = 'none';
-
-      const opt = {
-        margin: 0,
-        filename: `${invoice.invoiceNumber || 'invoice'}.pdf`,
-        image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      };
-
-      await html2pdf().set(opt).from(element).save();
-      addToast(t('pdfSuccess'), 'success');
-
+      if (window.electronAPI?.exportInvoicePdf) {
+        // Desktop: render the real invoice in an isolated hidden window and
+        // capture it — exact on-screen design + selectable text. The handler
+        // shows a native Save-As dialog and only reports success after the file
+        // is written, so the toast is never premature.
+        saveDraft(invoice);
+        addToast(t('generatingPdf'), 'info');
+        const result = await window.electronAPI.exportInvoicePdf({
+          defaultFileName: `${invoice.invoiceNumber || 'invoice'}.pdf`,
+        });
+        if (result.success) {
+          addToast(t('pdfSuccess'), 'success');
+        } else if (result.canceled) {
+          // User dismissed the save dialog — no toast.
+        } else {
+          console.error('Native PDF export failed:', result.error);
+          addToast(t('pdfError'), 'error');
+        }
+      } else {
+        // Browser/dev fallback (the app ships as a desktop build): use the
+        // browser's print-to-PDF via the print stylesheet.
+        window.print();
+      }
     } catch (error) {
       console.error('PDF Export Error:', error);
       addToast(t('pdfError'), 'error');
-      window.print();
     } finally {
-      if (scaledParent) scaledParent.style.transform = originalTransform;
       setIsExporting(false);
     }
   };
 
-  const handleNewInvoice = () => {
-    if (!window.confirm(t('confirmNew'))) return;
+  const handleShareInvoice = () => {
+    const email = invoice.clientEmail.trim();
+    if (!email) {
+      addToast(t('noClientEmail'), 'error');
+      return;
+    }
+    const localeTag = locale === 'ms' ? 'ms-MY' : 'en-MY';
+    const total = grandTotal(
+      invoice.items,
+      invoice.taxRate,
+      invoice.discountType,
+      invoice.discountValue,
+    ).toLocaleString(localeTag, { style: 'currency', currency: invoice.currency });
 
+    const subject = `${t('invoiceEmailSubject')} ${invoice.invoiceNumber}`;
+    const body = `${subject}\n${t('total')}: ${total}\n\n${invoice.senderName}`;
+    const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+    if (window.electronAPI?.openExternal) {
+      window.electronAPI.openExternal(mailto);
+    } else {
+      window.location.href = mailto;
+    }
+  };
+
+  const handleNewInvoice = () => {
+    setConfirmState({
+      title: t('newInvoice'),
+      message: t('confirmNew'),
+      confirmLabel: t('newInvoice'),
+      onConfirm: performNewInvoice,
+    });
+  };
+
+  const performNewInvoice = () => {
     const nextNumber = getNextInvoiceNumber();
     const today = new Date().toISOString().split('T')[0];
     const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -213,24 +268,61 @@ export default function App() {
     addToast(t('invoiceLoaded'), 'success');
   };
 
+  const duplicateInvoice = (e: React.MouseEvent, inv: InvoiceData) => {
+    e.stopPropagation();
+    const nextNumber = getNextInvoiceNumber();
+    const today = new Date().toISOString().split('T')[0];
+    const nextDue = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const copy: InvoiceData = {
+      ...inv,
+      id: crypto.randomUUID(),
+      invoiceNumber: nextNumber,
+      date: today,
+      dueDate: nextDue,
+      items: inv.items.map((it) => ({ ...it, id: crypto.randomUUID() })),
+    };
+    setInvoice(copy);
+    setShowHistory(false);
+    addToast(t('invoiceDuplicated'), 'success');
+  };
+
   const deleteInvoice = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (window.confirm(t('confirmDelete'))) {
-      const updated = deleteInvoiceFromHistory(id);
-      setSavedInvoices(updated);
-      addToast(t('invoiceDeleted'), 'info');
-    }
+    setConfirmState({
+      title: t('deleteAction'),
+      message: t('confirmDelete'),
+      confirmLabel: t('deleteAction'),
+      destructive: true,
+      onConfirm: () => {
+        const updated = deleteInvoiceFromHistory(id);
+        setSavedInvoices(updated);
+        addToast(t('invoiceDeleted'), 'info');
+      },
+    });
   };
 
   const toggleLanguage = () => setLocale(locale === 'en' ? 'ms' : 'en');
 
   // Styles
-  const navBtnClass = "p-2 rounded-full text-[#1D1D1F] dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2";
+  const navBtnClass = "p-2 rounded-full text-ink dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2";
 
   return (
-    <div className="min-h-screen bg-[#F5F5F7] dark:bg-[#000000] flex flex-col font-sans">
+    <div className="min-h-screen bg-canvas dark:bg-black flex flex-col font-sans">
       
       <ToastContainer toasts={toasts} removeToast={removeToast} />
+
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title || ''}
+        message={confirmState?.message || ''}
+        confirmLabel={confirmState?.confirmLabel}
+        destructive={confirmState?.destructive}
+        onConfirm={() => {
+          confirmState?.onConfirm();
+          setConfirmState(null);
+        }}
+        onCancel={() => setConfirmState(null)}
+      />
 
       {/* Glass Navbar */}
       <div className="no-print sticky top-0 z-40 w-full glass-panel border-b border-gray-200/50 dark:border-white/5">
@@ -239,26 +331,34 @@ export default function App() {
               <div className="w-8 h-8 bg-brand-900 dark:bg-white text-white dark:text-black rounded-lg flex items-center justify-center shadow-lg">
                 <Command className="w-5 h-5" />
               </div>
-              <span className="font-semibold text-[17px] tracking-tight text-[#1D1D1F] dark:text-white hidden md:inline">
+              <span className="font-semibold text-[17px] tracking-tight text-ink dark:text-white hidden md:inline">
                 {t('appTitle')}
               </span>
             </div>
             
             <div className="flex items-center gap-1 md:gap-2">
+               <span className="hidden md:inline text-[11px] text-gray-500 dark:text-gray-400 mr-1 min-w-[52px] text-right" aria-live="polite">
+                 {isSaving ? t('saving') : savedAt ? t('saved') : ''}
+               </span>
+
                <button onClick={() => setShowHistory(true)} className={navBtnClass} title={t('history')} aria-label={t('history')}>
                  <History className="w-5 h-5" strokeWidth={1.5} />
                </button>
 
-               <button onClick={toggleTheme} className={navBtnClass} aria-label={theme === 'light' ? t('switchToDark') : t('switchToLight')}>
+               <button onClick={toggleTheme} className={navBtnClass} title={theme === 'light' ? t('switchToDark') : t('switchToLight')} aria-label={theme === 'light' ? t('switchToDark') : t('switchToLight')}>
                  {theme === 'light' ? <Moon className="w-5 h-5" strokeWidth={1.5} /> : <Sun className="w-5 h-5" strokeWidth={1.5} />}
                </button>
 
-               <button onClick={toggleLanguage} className={`${navBtnClass} flex items-center gap-1`} aria-label={t('switchLanguage')}>
+               <button onClick={toggleLanguage} className={`${navBtnClass} flex items-center gap-1`} title={t('switchLanguage')} aria-label={t('switchLanguage')}>
                  <Globe className="w-5 h-5" strokeWidth={1.5} />
                  <span className="text-[10px] font-bold uppercase pt-0.5">{locale}</span>
                </button>
 
-               <button onClick={handleNewInvoice} className={navBtnClass} aria-label={t('newInvoice')}>
+               <button onClick={handleShareInvoice} className={navBtnClass} title={t('emailInvoice')} aria-label={t('emailInvoice')}>
+                 <Mail className="w-5 h-5" strokeWidth={1.5} />
+               </button>
+
+               <button onClick={handleNewInvoice} className={navBtnClass} title={t('newInvoice')} aria-label={t('newInvoice')}>
                  <Plus className="w-5 h-5" strokeWidth={1.5} />
                </button>
 
@@ -266,6 +366,7 @@ export default function App() {
                 onClick={handleExportPDF}
                 disabled={isExporting}
                 aria-busy={isExporting}
+                title={t('exportPdf')}
                 className={`hidden md:flex items-center gap-2 px-4 py-1.5 bg-brand-500 text-white rounded-full hover:bg-brand-600 active:scale-95 transition-all shadow-md text-xs font-semibold ml-2 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 ${isExporting ? 'opacity-70 cursor-wait' : ''}`}
               >
                 <Download className="w-3.5 h-3.5" />
@@ -288,9 +389,9 @@ export default function App() {
       {showHistory && (
         <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-labelledby="history-title" onKeyDown={(e) => { if (e.key === 'Escape') setShowHistory(false); }}>
           <div className="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity" onClick={() => setShowHistory(false)} />
-          <div ref={historyDialogRef} tabIndex={-1} className="relative w-80 bg-[#F5F5F7]/95 dark:bg-[#1C1C1E]/95 backdrop-blur-2xl h-full shadow-2xl flex flex-col border-r border-gray-200 dark:border-white/10 animate-in slide-in-from-left duration-300 ease-out focus:outline-none">
+          <div ref={historyDialogRef} tabIndex={-1} className="relative w-80 bg-canvas/95 dark:bg-surface/95 backdrop-blur-2xl h-full shadow-2xl flex flex-col border-r border-gray-200 dark:border-white/10 animate-in slide-in-from-left duration-300 ease-out focus:outline-none">
             <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-white/10">
-              <h2 id="history-title" className="text-lg font-semibold text-[#1D1D1F] dark:text-white">
+              <h2 id="history-title" className="text-lg font-semibold text-ink dark:text-white">
                 {t('history')}
               </h2>
               <button onClick={() => setShowHistory(false)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2" aria-label={t('closeHistory')}>
@@ -318,23 +419,32 @@ export default function App() {
                   }`}
                 >
                   <div className="flex justify-between items-center mb-1">
-                    <span className="font-medium text-sm text-[#1D1D1F] dark:text-white">{inv.invoiceNumber}</span>
+                    <span className="font-medium text-sm text-ink dark:text-white">{inv.invoiceNumber}</span>
                     <span className="text-[10px] text-gray-400">{inv.date}</span>
                   </div>
                   <div className="text-xs text-gray-500 truncate mb-2">
                     {inv.clientName || t('noClient')}
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-[#1D1D1F] dark:text-white">
+                    <span className="text-xs font-bold text-ink dark:text-white">
                       {invoiceSubtotal(inv.items).toLocaleString(locale === 'ms' ? 'ms-MY' : 'en-MY', { style: 'currency', currency: inv.currency })}
                     </span>
-                    <button
-                      onClick={(e) => deleteInvoice(e, inv.id)}
-                      className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1"
-                      aria-label={`Delete invoice ${inv.invoiceNumber}`}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => duplicateInvoice(e, inv)}
+                        className="text-gray-500 hover:text-brand-600 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 [@media(pointer:coarse)]:opacity-100 transition-opacity p-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1"
+                        aria-label={`Duplicate invoice ${inv.invoiceNumber}`}
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => deleteInvoice(e, inv.id)}
+                        className="text-gray-500 hover:text-red-600 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 [@media(pointer:coarse)]:opacity-100 transition-opacity p-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1"
+                        aria-label={`Delete invoice ${inv.invoiceNumber}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -344,7 +454,7 @@ export default function App() {
       )}
 
       {/* Main Content Dashboard */}
-      <main className="flex-1 max-w-[1600px] mx-auto w-full p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <main className="app-print-main flex-1 max-w-[1600px] mx-auto w-full p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
         {/* Editor Column - Left Side */}
         <div className={`lg:col-span-5 xl:col-span-4 ${showMobilePreview ? 'hidden' : 'block'} lg:block`}>
@@ -360,13 +470,13 @@ export default function App() {
         {/* Preview Column - Sticky Right Side */}
         <div
           ref={mergeRefs(previewContainerRef, previewDialogRef)}
-          className={`lg:col-span-7 xl:col-span-8 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] ${showMobilePreview ? 'fixed inset-0 z-50 bg-[#F5F5F7] dark:bg-black p-4 overflow-y-auto' : 'hidden'} lg:block lg:overflow-y-auto flex flex-col no-scrollbar focus:outline-none`}
+          className={`preview-print-region lg:col-span-7 xl:col-span-8 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] ${showMobilePreview ? 'fixed inset-0 z-50 bg-canvas dark:bg-black p-4 overflow-y-auto' : 'hidden'} lg:block lg:overflow-y-auto flex flex-col no-scrollbar focus:outline-none`}
           {...(showMobilePreview ? { role: 'dialog', 'aria-modal': true, tabIndex: -1, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Escape') setShowMobilePreview(false); } } : {})}
         >
           
           {showMobilePreview && (
              <div className="no-print flex justify-between items-center mb-6 lg:hidden">
-                <h2 className="text-xl font-bold text-[#1D1D1F] dark:text-white">{t('preview')}</h2>
+                <h2 className="text-xl font-bold text-ink dark:text-white">{t('preview')}</h2>
                 <div className="flex gap-3">
                    <button
                     onClick={handleExportPDF}
@@ -387,14 +497,14 @@ export default function App() {
              </div>
           )}
 
-          <div className="flex-1 flex items-start justify-center overflow-y-auto lg:overflow-y-auto no-scrollbar pb-20">
+          <div className="preview-print-flow flex-1 flex items-start justify-center overflow-y-auto lg:overflow-y-auto no-scrollbar pb-20">
             {/* The Scalable Preview Wrapper */}
-            <div 
-              style={{ 
+            <div
+              style={{
                 transform: isDesktop ? `scale(${previewScale})` : 'none',
                 transformOrigin: 'top center',
               }}
-              className="transition-transform duration-300 ease-out origin-top w-full flex justify-center shadow-float rounded-none md:rounded-sm bg-white"
+              className="preview-print-scale transition-transform duration-300 ease-out origin-top w-full flex justify-center shadow-float rounded-none md:rounded-sm bg-white"
             >
               <InvoicePreview data={invoice} />
             </div>
@@ -408,14 +518,14 @@ export default function App() {
            <button
             onClick={handleNewInvoice}
             aria-label={t('newInvoice')}
-            className="flex items-center justify-center w-14 h-14 bg-white dark:bg-[#1C1C1E] text-gray-600 dark:text-gray-300 rounded-full shadow-float border border-white/10 active:scale-90 transition-transform focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
+            className="flex items-center justify-center w-14 h-14 bg-white dark:bg-surface text-gray-600 dark:text-gray-300 rounded-full shadow-float border border-white/10 active:scale-90 transition-transform focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
           >
             <Plus className="w-6 h-6" />
           </button>
           <button
             onClick={() => setShowMobilePreview(true)}
             aria-label={t('preview')}
-            className="flex items-center justify-center w-14 h-14 bg-[#1D1D1F] dark:bg-white text-white dark:text-black rounded-full shadow-float active:scale-90 transition-transform focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
+            className="flex items-center justify-center w-14 h-14 bg-ink dark:bg-white text-white dark:text-black rounded-full shadow-float active:scale-90 transition-transform focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
           >
             <Printer className="w-6 h-6" />
           </button>

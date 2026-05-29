@@ -68,6 +68,21 @@ describe('hydrateDraft', () => {
     const result = hydrateDraft(JSON.stringify({ id: 'fixed-id' }));
     expect(result.id).toBe('fixed-id');
   });
+
+  it('defaults discount fields for a pre-discount draft (back-compat)', () => {
+    // A draft saved before the discount feature existed has no discount keys.
+    const legacy = JSON.stringify({ clientName: 'Old Co', currency: 'MYR', taxRate: 6 });
+    const result = hydrateDraft(legacy);
+    expect(result.discountType).toBe('percent');
+    expect(result.discountValue).toBe(0);
+  });
+
+  it('preserves discount fields when present', () => {
+    const draft = JSON.stringify({ discountType: 'fixed', discountValue: 50 });
+    const result = hydrateDraft(draft);
+    expect(result.discountType).toBe('fixed');
+    expect(result.discountValue).toBe(50);
+  });
 });
 
 describe('hasMeaningfulContent', () => {

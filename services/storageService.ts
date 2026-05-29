@@ -1,4 +1,4 @@
-import { InvoiceData } from '../types';
+import { InvoiceData, SavedClient } from '../types';
 
 // This module is the single owner of all localStorage access in the app.
 // Components and other services should go through these functions rather than
@@ -8,6 +8,7 @@ const DRAFT_KEY = 'invoiceDraft';
 const COUNTER_KEY = 'invoiceCounter';
 const THEME_KEY = 'theme';
 const LOCALE_KEY = 'locale';
+const CLIENTS_KEY = 'savedClients';
 
 export type Theme = 'light' | 'dark';
 
@@ -123,4 +124,47 @@ export const loadLocale = (): string | null =>
 
 export const saveLocale = (locale: string): void => {
   if (hasStorage()) localStorage.setItem(LOCALE_KEY, locale);
+};
+
+// ---------------------------------------------------------------------------
+// Saved clients (for autofill)
+// ---------------------------------------------------------------------------
+
+export const getStoredClients = (): SavedClient[] => {
+  if (!hasStorage()) return [];
+  try {
+    const stored = localStorage.getItem(CLIENTS_KEY);
+    const parsed = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.error('Failed to load saved clients', e);
+    return [];
+  }
+};
+
+/** Upsert a client by id (matched case-insensitively by name elsewhere). */
+export const saveClient = (client: SavedClient): SavedClient[] => {
+  const clients = getStoredClients();
+  const index = clients.findIndex((c) => c.id === client.id);
+  if (index >= 0) {
+    clients[index] = client;
+  } else {
+    clients.unshift(client);
+  }
+  try {
+    localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients));
+  } catch (e) {
+    console.error('Failed to save client', e);
+  }
+  return clients;
+};
+
+export const deleteSavedClient = (id: string): SavedClient[] => {
+  const clients = getStoredClients().filter((c) => c.id !== id);
+  try {
+    localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients));
+  } catch (e) {
+    console.error('Failed to delete saved client', e);
+  }
+  return clients;
 };

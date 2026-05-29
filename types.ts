@@ -5,6 +5,16 @@ export interface LineItem {
   rate: number;
 }
 
+export type DiscountType = 'percent' | 'fixed';
+
+/** A reusable client saved for autofill across invoices. */
+export interface SavedClient {
+  id: string;
+  name: string;
+  email: string;
+  address: string;
+}
+
 export interface InvoiceData {
   id: string; // Unique ID for history management
   invoiceNumber: string;
@@ -20,6 +30,8 @@ export interface InvoiceData {
   clientAddress: string;
   currency: string;
   taxRate: number;
+  discountType?: DiscountType; // 'percent' (default) or 'fixed'
+  discountValue?: number;      // 0 / undefined => no discount
   notes: string;
   items: LineItem[];
   logo?: string; // Base64 Data URL
@@ -40,7 +52,9 @@ export const createDefaultInvoice = (): InvoiceData => ({
   clientEmail: 'admin@jtm.gov.my',
   clientAddress: 'Aras 3, Blok B, Kompleks Kerajaan,\n62502 Putrajaya, Wilayah Persekutuan',
   currency: 'MYR',
-  taxRate: 6, 
+  taxRate: 6,
+  discountType: 'percent',
+  discountValue: 0,
   notes: 'Payment terms: 30 days.\nCheques payable to "Inovasi Digital Sdn Bhd".\nBank: Maybank Berhad (Account: 5140-1122-3344)',
   items: [
     {

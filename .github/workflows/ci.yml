@@ -1,0 +1,35 @@
+name: CI
+
+# Runs the type-check, lint and unit tests on every push and pull request so
+# regressions are caught continuously — not only when a release tag is pushed
+# (see release.yml, which gates the .exe build on the same checks).
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Lint (informational)
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Unit tests
+        run: npm run test:run
